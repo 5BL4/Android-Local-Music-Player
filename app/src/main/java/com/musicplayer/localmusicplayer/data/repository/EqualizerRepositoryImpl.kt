@@ -67,5 +67,6 @@ class EqualizerRepositoryImpl @Inject constructor() : EqualizerRepository {
     override fun release() {
         equalizer?.release()
         equalizer = null
+        audioSessionId = 0
     }
 }

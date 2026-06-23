@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,11 +30,6 @@ fun LyricsScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.lyrics)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
                 actions = {
                     IconButton(onClick = { viewModel.setShowSearchPanel(!uiState.showSearchPanel) }) {
                         Icon(Icons.Default.Search, contentDescription = "Search Lyrics")

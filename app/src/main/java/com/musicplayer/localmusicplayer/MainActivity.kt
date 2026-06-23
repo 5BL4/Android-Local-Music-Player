@@ -13,8 +13,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Equalizer
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.musicplayer.localmusicplayer.R
@@ -88,7 +91,7 @@ fun MainContent() {
 
     val playerViewModel: PlayerViewModel = viewModel()
 
-    val bottomNavScreens = setOf(Screen.Library.route, Screen.Equalizer.route, Screen.Settings.route)
+    val bottomNavScreens = setOf(Screen.Songs.route, Screen.Albums.route, Screen.Artists.route, Screen.Playlists.route, Screen.Settings.route)
     val showBottomNav = currentRoute in bottomNavScreens
 
     val playerScreens = setOf(Screen.Player.route, Screen.Lyrics.ROUTE)
@@ -117,7 +120,10 @@ fun MainContent() {
         return
     }
 
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0)
+    ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             Surface(modifier = Modifier.weight(1f)) {
                 NavGraph(navController = navController)
@@ -141,23 +147,57 @@ fun MainContent() {
                 ) {
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
-                        label = { Text(stringResource(R.string.tab_library)) },
-                        selected = currentRoute == Screen.Library.route,
+                        label = { Text(stringResource(R.string.tab_songs)) },
+                        selected = currentRoute == Screen.Songs.route,
                         onClick = {
-                            if (currentRoute != Screen.Library.route) {
-                                navController.navigate(Screen.Library.route) {
-                                    popUpTo(Screen.Library.route) { inclusive = true }
+                            navController.navigate(Screen.Songs.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
                                 }
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         }
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.Equalizer, contentDescription = null) },
-                        label = { Text(stringResource(R.string.tab_equalizer)) },
-                        selected = currentRoute == Screen.Equalizer.route,
+                        icon = { Icon(Icons.Default.Album, contentDescription = null) },
+                        label = { Text(stringResource(R.string.tab_albums)) },
+                        selected = currentRoute == Screen.Albums.route,
                         onClick = {
-                            if (currentRoute != Screen.Equalizer.route) {
-                                navController.navigate(Screen.Equalizer.route)
+                            navController.navigate(Screen.Albums.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Person, contentDescription = null) },
+                        label = { Text(stringResource(R.string.tab_artists)) },
+                        selected = currentRoute == Screen.Artists.route,
+                        onClick = {
+                            navController.navigate(Screen.Artists.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
+                        label = { Text(stringResource(R.string.tab_playlists)) },
+                        selected = currentRoute == Screen.Playlists.route,
+                        onClick = {
+                            navController.navigate(Screen.Playlists.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         }
                     )
@@ -166,8 +206,12 @@ fun MainContent() {
                         label = { Text(stringResource(R.string.tab_settings)) },
                         selected = currentRoute == Screen.Settings.route,
                         onClick = {
-                            if (currentRoute != Screen.Settings.route) {
-                                navController.navigate(Screen.Settings.route)
+                            navController.navigate(Screen.Settings.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         }
                     )

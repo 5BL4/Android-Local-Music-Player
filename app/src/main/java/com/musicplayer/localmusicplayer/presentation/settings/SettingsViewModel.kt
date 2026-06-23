@@ -89,8 +89,13 @@ class SettingsViewModel @Inject constructor(
     fun rescanMusic() {
         viewModelScope.launch {
             _uiState.update { it.copy(isScanning = true) }
-            scanMusicFilesUseCase()
-            _uiState.update { it.copy(isScanning = false) }
+            try {
+                scanMusicFilesUseCase()
+            } catch (e: Exception) {
+                android.util.Log.e("SettingsViewModel", "Music rescan failed", e)
+            } finally {
+                _uiState.update { it.copy(isScanning = false) }
+            }
         }
     }
 

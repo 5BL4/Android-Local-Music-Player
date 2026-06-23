@@ -3,7 +3,6 @@ package com.musicplayer.localmusicplayer.presentation.equalizer
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,11 +35,6 @@ fun EqualizerScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.equalizer)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
                 actions = {
                     Switch(
                         checked = uiState.isEnabled,
@@ -59,7 +53,7 @@ fun EqualizerScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(16.dp)
+                    .padding(8.dp)
             ) {
                 var expanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(
@@ -93,7 +87,7 @@ fun EqualizerScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 if (uiState.bands.isNotEmpty()) {
                     Row(
@@ -117,8 +111,7 @@ fun EqualizerScreen(
                                 BoxWithConstraints(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .fillMaxWidth()
-                                        .padding(vertical = 2.dp),
+                                        .fillMaxWidth(),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Slider(
@@ -126,7 +119,8 @@ fun EqualizerScreen(
                                         onValueChange = { viewModel.onBandLevelChanged(band.index, it.toInt()) },
                                         valueRange = -1500f..1500f,
                                         modifier = Modifier
-                                            .width(maxHeight)
+                                            .requiredWidth(maxHeight)
+                                            .height(56.dp)
                                             .rotate(270f)
                                     )
                                 }

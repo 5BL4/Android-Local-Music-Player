@@ -103,4 +103,9 @@
     <string name="delete_menu">删除</string>
     <string name="song_disc_label">CD 号</string>
     <string name="song_genre_label">风格</string>
+    <string name="edit_saved">已保存</string>
+    <string name="edit_failed">保存失败</string>
+    <string name="edit_cancelled">已取消</string>
+    <string name="delete_failed">删除失败</string>
+    <string name="delete_cancelled">已取消</string>
 </resources>

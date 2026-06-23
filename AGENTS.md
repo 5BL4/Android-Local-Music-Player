@@ -33,7 +33,19 @@ APK output: `app/build/outputs/apk/debug/app-debug.apk` (release is unsigned —
 
 ## Verification
 
-There is **no test suite** (no `app/src/test/`, no `app/src/androidTest/`) and **no CI**. Do not assume `test`/`check` tasks validate anything meaningful. Verification = successful `assembleDebug` build + manual run on a device/emulator.
+A test suite exists but there is **no CI** — tests must be run manually.
+
+**Unit tests** (`app/src/test/`, JVM, ~47 cases): mappers (`PlaylistMapperTest`, `SongMapperTest`), repositories (`PlaylistRepositoryImplTest`), utils (`TimeFormatterTest`, `LyricParserTest`, `LrcParserTest`). Test deps: junit, turbine, mockk, kotlinx-coroutines-test.
+```
+gradlew.bat :app:testDebugUnitTest
+```
+
+**Instrumented tests** (`app/src/androidTest/`, require device/emulator): `SongDaoTest`, `PlaylistDaoTest`, `HiltTestRunner`. Test deps: hilt.android.testing, compose ui test.
+```
+gradlew.bat :app:connectedAndroidTest
+```
+
+Coverage is limited (no ViewModel, navigation, service, or Equalizer tests). After changes, run unit tests + `assembleDebug` at minimum; manually verify playback/navigation on a device. UI/paging crashes often only reproduce at runtime.
 
 `lint` is configured with `abortOnError = false` and `checkReleaseBuilds = false` — it will **not** fail the build. Don't rely on lint as a gate.
 

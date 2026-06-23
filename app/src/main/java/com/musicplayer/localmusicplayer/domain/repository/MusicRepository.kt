@@ -3,6 +3,8 @@ package com.musicplayer.localmusicplayer.domain.repository
 import androidx.paging.PagingData
 import com.musicplayer.localmusicplayer.domain.model.Album
 import com.musicplayer.localmusicplayer.domain.model.Artist
+import com.musicplayer.localmusicplayer.domain.model.DeleteResult
+import com.musicplayer.localmusicplayer.domain.model.EditResult
 import com.musicplayer.localmusicplayer.domain.model.PlaybackState
 import com.musicplayer.localmusicplayer.domain.model.RepeatMode
 import com.musicplayer.localmusicplayer.domain.model.Song
@@ -26,6 +28,8 @@ interface MusicRepository {
     fun getSongsByArtist(artist: String): Flow<List<Song>>
     fun searchSongs(query: String): Flow<List<Song>>
 
+    suspend fun getSortedSongs(sort: SortOption = SortOption.Title, query: String = ""): List<Song>
+
     fun play(song: Song, queue: List<Song>)
     fun togglePlayPause()
     fun skipToNext()
@@ -37,8 +41,12 @@ interface MusicRepository {
 
     val audioSessionId: Int
 
-    suspend fun deleteSongFile(song: Song): Boolean
-    suspend fun updateSongMetadata(song: Song)
-    suspend fun updateAlbumInfo(albumId: Long, newAlbum: String, newArtist: String)
-    suspend fun deleteAlbumSongs(albumId: Long, songs: List<Song>)
+    suspend fun deleteSongFile(song: Song): DeleteResult
+    suspend fun deleteAlbumSongs(albumId: Long): DeleteResult
+    suspend fun commitDelete(requestId: Long): Boolean
+    suspend fun cancelDelete(requestId: Long)
+    suspend fun updateSongMetadata(song: Song): EditResult
+    suspend fun updateAlbumInfo(albumId: Long, newAlbum: String, newArtist: String): EditResult
+    suspend fun commitEdit(requestId: Long): Boolean
+    suspend fun cancelEdit(requestId: Long)
 }

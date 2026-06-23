@@ -8,6 +8,8 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.map
+import com.musicplayer.localmusicplayer.data.deletion.MediaStoreDeleteManager
+import com.musicplayer.localmusicplayer.data.edit.MediaStoreEditManager
 import com.musicplayer.localmusicplayer.data.local.db.dao.AlbumResult
 import com.musicplayer.localmusicplayer.data.local.db.dao.ArtistResult
 import com.musicplayer.localmusicplayer.data.local.db.dao.SongDao
@@ -17,14 +19,18 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import com.musicplayer.localmusicplayer.data.mapper.toDomain
 import com.musicplayer.localmusicplayer.domain.model.Album
 import com.musicplayer.localmusicplayer.domain.model.Artist
+import com.musicplayer.localmusicplayer.domain.model.DeleteResult
+import com.musicplayer.localmusicplayer.domain.model.EditResult
 import com.musicplayer.localmusicplayer.domain.model.PlaybackState
 import com.musicplayer.localmusicplayer.domain.model.RepeatMode
 import com.musicplayer.localmusicplayer.domain.model.Song
 import com.musicplayer.localmusicplayer.domain.model.SortOption
 import com.musicplayer.localmusicplayer.domain.repository.MusicRepository
 import com.musicplayer.localmusicplayer.service.PlaybackManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,6 +39,8 @@ class MusicRepositoryImpl @Inject constructor(
     private val songDao: SongDao,
     private val mediaStoreDataSource: MediaStoreDataSource,
     private val playbackManager: PlaybackManager,
+    private val deleteManager: MediaStoreDeleteManager,
+    private val editManager: MediaStoreEditManager,
     @ApplicationContext private val context: Context
 ) : MusicRepository {
 
@@ -42,17 +50,21 @@ class MusicRepositoryImpl @Inject constructor(
     private val pagingConfig = PagingConfig(pageSize = 50, enablePlaceholders = false)
 
     override fun getSongsPaged(sort: SortOption, query: String): Flow<PagingData<Song>> {
-        val source: PagingSource<Int, SongEntity> = when {
-            query.isNotBlank() -> songDao.pagingSourceBySearch(query)
-            else -> when (sort) {
-                SortOption.Title     -> songDao.pagingSourceByTitle()
-                SortOption.Artist    -> songDao.pagingSourceByArtist()
-                SortOption.Album     -> songDao.pagingSourceByAlbum()
-                SortOption.DateAdded -> songDao.pagingSourceByDateAdded()
-                SortOption.Duration  -> songDao.pagingSourceByDuration()
+        // Factory lambda must create a NEW PagingSource on each invalidation.
+        // Capturing a single source outside the lambda returns an already-invalidated
+        // instance after DB writes, which crashes Paging 3.
+        return Pager(config = pagingConfig) {
+            when {
+                query.isNotBlank() -> songDao.pagingSourceBySearch(query)
+                else -> when (sort) {
+                    SortOption.Title     -> songDao.pagingSourceByTitle()
+                    SortOption.Artist    -> songDao.pagingSourceByArtist()
+                    SortOption.Album     -> songDao.pagingSourceByAlbum()
+                    SortOption.DateAdded -> songDao.pagingSourceByDateAdded()
+                    SortOption.Duration  -> songDao.pagingSourceByDuration()
+                }
             }
         }
-        return Pager(config = pagingConfig) { source }
             .flow
             .map { pagingData -> pagingData.map { entity -> entity.toDomain() } }
     }
@@ -69,7 +81,9 @@ class MusicRepositoryImpl @Inject constructor(
     override val currentPosition: Flow<Long> = playbackManager.currentPosition
 
     override suspend fun scanMusicFiles() {
-        val scanned = mediaStoreDataSource.scanAudioFiles()
+        val scanned = withContext(Dispatchers.IO) {
+            mediaStoreDataSource.scanAudioFiles()
+        }
         val scannedMsIds = scanned.map { it.mediaStoreId }
 
         // Fast delete+insert: delete existing rows that will be replaced
@@ -109,6 +123,21 @@ class MusicRepositoryImpl @Inject constructor(
         return songDao.searchSongs(query).map { it.toDomain() }
     }
 
+    override suspend fun getSortedSongs(sort: SortOption, query: String): List<Song> {
+        val entities = if (query.isNotBlank()) {
+            songDao.searchAll(query)
+        } else {
+            when (sort) {
+                SortOption.Title     -> songDao.getAllByTitle()
+                SortOption.Artist    -> songDao.getAllByArtist()
+                SortOption.Album     -> songDao.getAllByAlbum()
+                SortOption.DateAdded -> songDao.getAllByDateAdded()
+                SortOption.Duration  -> songDao.getAllByDuration()
+            }
+        }
+        return entities.toDomain()
+    }
+
     override fun play(song: Song, queue: List<Song>) {
         playbackManager.play(song, queue)
     }
@@ -142,47 +171,158 @@ class MusicRepositoryImpl @Inject constructor(
     override val audioSessionId: Int
         get() = playbackManager.audioSessionId
 
-    override suspend fun updateAlbumInfo(albumId: Long, newAlbum: String, newArtist: String) {
-        songDao.updateAlbumInfo(albumId, newAlbum, newArtist)
-    }
-
-    override suspend fun deleteAlbumSongs(albumId: Long, songs: List<Song>) {
-        songs.forEach { song ->
-            try {
-                val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, song.mediaStoreId)
-                context.contentResolver.delete(uri, null, null)
-            } catch (_: Exception) {}
+    override suspend fun updateAlbumInfo(albumId: Long, newAlbum: String, newArtist: String): EditResult = withContext(Dispatchers.IO) {
+        val entities = songDao.getSongsByAlbumOnce(albumId)
+        if (entities.isEmpty()) {
+            songDao.updateAlbumInfo(albumId, newAlbum, newArtist)
+            return@withContext EditResult.Success
         }
-        songDao.deleteByAlbumId(albumId)
-    }
-
-    override suspend fun deleteSongFile(song: Song): Boolean {
-        return try {
-            val uri = ContentUris.withAppendedId(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                song.mediaStoreId
+        val songs = entities.toDomain()
+        val payloads = songs.map { MediaStoreEditManager.EditPayload(song = it, newAlbum = newAlbum, newArtist = newArtist) }
+        val result = editManager.attemptEdit(payloads) { payload ->
+            songDao.updateSong(
+                id = payload.song.id,
+                title = payload.song.title,
+                artist = newArtist,
+                album = newAlbum,
+                albumId = payload.song.albumId,
+                year = payload.song.year,
+                track = payload.song.trackNumber,
+                disc = payload.song.discNumber,
+                genre = payload.song.genre,
+                albumArtUri = payload.song.albumArtUri
             )
-            val rows = context.contentResolver.delete(uri, null, null)
-            if (rows > 0) {
-                songDao.deleteById(song.id)
-                true
-            } else false
-        } catch (e: Exception) { false }
+        }
+        when (result) {
+            is MediaStoreEditManager.AttemptResult.Done -> {
+                // Per-song onTagWritten already updated each successfully-edited song's
+                // album/artist in the DB. Do NOT run a bulk UPDATE here — that would also
+                // overwrite songs whose file edit failed (skipped in the loop), creating a
+                // DB/file mismatch that surfaces as duplicate albums after the next rescan.
+                EditResult.Success
+            }
+            is MediaStoreEditManager.AttemptResult.NeedsConfirm -> EditResult.NeedsConfirmation(result.requestId)
+            MediaStoreEditManager.AttemptResult.Error -> EditResult.Error
+        }
     }
 
-    override suspend fun updateSongMetadata(song: Song) {
-        songDao.updateSong(
-            id = song.id,
-            title = song.title,
-            artist = song.artist,
-            album = song.album,
-            albumId = song.albumId,
-            year = song.year,
-            track = song.trackNumber,
-            disc = song.discNumber,
-            genre = song.genre,
-            albumArtUri = song.albumArtUri
-        )
+    override suspend fun deleteAlbumSongs(albumId: Long): DeleteResult = withContext(Dispatchers.IO) {
+        val entities = songDao.getSongsByAlbumOnce(albumId)
+        if (entities.isEmpty()) {
+            songDao.deleteByAlbumId(albumId)
+            return@withContext DeleteResult.Success
+        }
+        val songs = entities.toDomain()
+        val result = deleteManager.attemptDelete(songs) { ids ->
+            songDao.deleteSongsByIds(ids)
+            playbackManager.removeDeletedSongs(ids)
+        }
+        when (result) {
+            is MediaStoreDeleteManager.AttemptResult.Done -> {
+                songDao.deleteByAlbumId(albumId)
+                DeleteResult.Success
+            }
+            is MediaStoreDeleteManager.AttemptResult.NeedsConfirm -> {
+                DeleteResult.NeedsConfirmation(result.requestId)
+            }
+            MediaStoreDeleteManager.AttemptResult.Error -> DeleteResult.Error
+        }
+    }
+
+    override suspend fun deleteSongFile(song: Song): DeleteResult = withContext(Dispatchers.IO) {
+        val result = deleteManager.attemptDelete(listOf(song)) { ids ->
+            songDao.deleteSongsByIds(ids)
+            playbackManager.removeDeletedSongs(ids)
+        }
+        when (result) {
+            is MediaStoreDeleteManager.AttemptResult.Done -> DeleteResult.Success
+            is MediaStoreDeleteManager.AttemptResult.NeedsConfirm -> DeleteResult.NeedsConfirmation(result.requestId)
+            MediaStoreDeleteManager.AttemptResult.Error -> DeleteResult.Error
+        }
+    }
+
+    override suspend fun commitDelete(requestId: Long): Boolean = withContext(Dispatchers.IO) {
+        val songIds = deleteManager.onConfirmed(requestId) ?: return@withContext false
+        if (songIds.isNotEmpty()) {
+            songDao.deleteSongsByIds(songIds)
+            playbackManager.removeDeletedSongs(songIds)
+        }
+        // 如果还有更多 sender 需要确认（API29 多文件），不 clear
+        if (!deleteManager.hasMoreSenders(requestId)) {
+            deleteManager.clear(requestId)
+        }
+        true
+    }
+
+    override suspend fun cancelDelete(requestId: Long) = withContext(Dispatchers.IO) {
+        deleteManager.cancel(requestId)
+    }
+
+    override suspend fun updateSongMetadata(song: Song): EditResult = withContext(Dispatchers.IO) {
+        val payload = MediaStoreEditManager.EditPayload(song = song, newAlbum = null, newArtist = null)
+        val result = editManager.attemptEdit(listOf(payload)) { p ->
+            songDao.updateSong(
+                id = p.song.id,
+                title = p.song.title,
+                artist = p.song.artist,
+                album = p.song.album,
+                albumId = p.song.albumId,
+                year = p.song.year,
+                track = p.song.trackNumber,
+                disc = p.song.discNumber,
+                genre = p.song.genre,
+                albumArtUri = p.song.albumArtUri
+            )
+        }
+        when (result) {
+            is MediaStoreEditManager.AttemptResult.Done -> EditResult.Success
+            is MediaStoreEditManager.AttemptResult.NeedsConfirm -> EditResult.NeedsConfirmation(result.requestId)
+            MediaStoreEditManager.AttemptResult.Error -> EditResult.Error
+        }
+    }
+
+    override suspend fun commitEdit(requestId: Long): Boolean = withContext(Dispatchers.IO) {
+        val payloads = editManager.onConfirmed(requestId) ?: return@withContext false
+        if (payloads.isEmpty() && editManager.hasMoreSenders(requestId)) {
+            return@withContext true
+        }
+        val success = editManager.retryWriteTags(requestId) { payload ->
+            if (payload.newAlbum != null || payload.newArtist != null) {
+                songDao.updateSong(
+                    id = payload.song.id,
+                    title = payload.song.title,
+                    artist = payload.newArtist ?: payload.song.artist,
+                    album = payload.newAlbum ?: payload.song.album,
+                    albumId = payload.song.albumId,
+                    year = payload.song.year,
+                    track = payload.song.trackNumber,
+                    disc = payload.song.discNumber,
+                    genre = payload.song.genre,
+                    albumArtUri = payload.song.albumArtUri
+                )
+            } else {
+                songDao.updateSong(
+                    id = payload.song.id,
+                    title = payload.song.title,
+                    artist = payload.song.artist,
+                    album = payload.song.album,
+                    albumId = payload.song.albumId,
+                    year = payload.song.year,
+                    track = payload.song.trackNumber,
+                    disc = payload.song.discNumber,
+                    genre = payload.song.genre,
+                    albumArtUri = payload.song.albumArtUri
+                )
+            }
+        }
+        if (!editManager.hasMoreSenders(requestId)) {
+            editManager.clear(requestId)
+        }
+        success
+    }
+
+    override suspend fun cancelEdit(requestId: Long) = withContext(Dispatchers.IO) {
+        editManager.cancel(requestId)
     }
 
     private fun AlbumResult.toAlbum() = Album(

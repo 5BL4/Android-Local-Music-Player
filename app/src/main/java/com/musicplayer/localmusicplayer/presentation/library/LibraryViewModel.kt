@@ -1,11 +1,16 @@
 package com.musicplayer.localmusicplayer.presentation.library
 
+import android.content.IntentSender
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.musicplayer.localmusicplayer.data.deletion.MediaStoreDeleteManager
+import com.musicplayer.localmusicplayer.data.edit.MediaStoreEditManager
 import com.musicplayer.localmusicplayer.domain.model.Album
 import com.musicplayer.localmusicplayer.domain.model.Artist
+import com.musicplayer.localmusicplayer.domain.model.DeleteResult
+import com.musicplayer.localmusicplayer.domain.model.EditResult
 import com.musicplayer.localmusicplayer.domain.model.Playlist
 import com.musicplayer.localmusicplayer.domain.model.Song
 import com.musicplayer.localmusicplayer.domain.model.SortOption
@@ -16,6 +21,7 @@ import com.musicplayer.localmusicplayer.domain.usecase.DeletePlaylistUseCase
 import com.musicplayer.localmusicplayer.domain.usecase.PlaySongUseCase
 import com.musicplayer.localmusicplayer.domain.usecase.ScanMusicFilesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -34,6 +40,18 @@ data class LibraryUiState(
 
 enum class LibraryTab { Songs, Albums, Artists, Playlists }
 
+sealed class DeleteEvent {
+    object Deleted : DeleteEvent()
+    object Failed : DeleteEvent()
+    object Cancelled : DeleteEvent()
+}
+
+sealed class EditEvent {
+    object Saved : EditEvent()
+    object Failed : EditEvent()
+    object Cancelled : EditEvent()
+}
+
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
@@ -41,11 +59,25 @@ class LibraryViewModel @Inject constructor(
     private val themeRepository: ThemeRepository,
     private val scanMusicFilesUseCase: ScanMusicFilesUseCase,
     private val playSongUseCase: PlaySongUseCase,
-    private val deletePlaylistUseCase: DeletePlaylistUseCase
+    private val deletePlaylistUseCase: DeletePlaylistUseCase,
+    private val deleteManager: MediaStoreDeleteManager,
+    private val editManager: MediaStoreEditManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LibraryUiState(isLoading = true))
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
+
+    private val _deleteConfirmation = MutableStateFlow<Long?>(null)
+    val deleteConfirmation: StateFlow<Long?> = _deleteConfirmation.asStateFlow()
+
+    private val _deleteEvent = MutableSharedFlow<DeleteEvent>()
+    val deleteEvent: SharedFlow<DeleteEvent> = _deleteEvent.asSharedFlow()
+
+    private val _editConfirmation = MutableStateFlow<Long?>(null)
+    val editConfirmation: StateFlow<Long?> = _editConfirmation.asStateFlow()
+
+    private val _editEvent = MutableSharedFlow<EditEvent>()
+    val editEvent: SharedFlow<EditEvent> = _editEvent.asSharedFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val songPagingFlow: Flow<PagingData<Song>> =
@@ -77,14 +109,18 @@ class LibraryViewModel @Inject constructor(
                 _uiState.update { it.copy(sortOption = sortOption) }
             }
         }
-        scanMusic()
     }
 
     fun scanMusic() {
         viewModelScope.launch {
             _uiState.update { it.copy(isScanning = true) }
-            scanMusicFilesUseCase()
-            _uiState.update { it.copy(isScanning = false) }
+            try {
+                scanMusicFilesUseCase()
+            } catch (e: Exception) {
+                android.util.Log.e("LibraryViewModel", "Music scan failed", e)
+            } finally {
+                _uiState.update { it.copy(isScanning = false) }
+            }
         }
     }
 
@@ -101,20 +137,49 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun playSong(song: Song) {
-        // For Paging mode, pass empty queue — the player will populate from current view
-        playSongUseCase(song, emptyList())
+        viewModelScope.launch {
+            // Paging 3 does not expose the full song list, so query the DB for the
+            // complete sorted queue to enable next/previous navigation.
+            val queue = musicRepository.getSortedSongs(_uiState.value.sortOption, _uiState.value.searchQuery)
+            playSongUseCase(song, queue.ifEmpty { listOf(song) })
+        }
     }
 
     fun deleteSongFile(song: Song) {
-        viewModelScope.launch { musicRepository.deleteSongFile(song) }
+        viewModelScope.launch {
+            when (val r = musicRepository.deleteSongFile(song)) {
+                is DeleteResult.NeedsConfirmation -> _deleteConfirmation.value = r.requestId
+                DeleteResult.Success -> _deleteEvent.emit(DeleteEvent.Deleted)
+                DeleteResult.Error -> _deleteEvent.emit(DeleteEvent.Failed)
+            }
+        }
     }
 
     fun updateSongMetadata(song: Song) {
-        viewModelScope.launch { musicRepository.updateSongMetadata(song) }
+        viewModelScope.launch {
+            try {
+                when (val r = musicRepository.updateSongMetadata(song)) {
+                    is EditResult.NeedsConfirmation -> _editConfirmation.value = r.requestId
+                    EditResult.Success -> _editEvent.emit(EditEvent.Saved)
+                    EditResult.Error -> _editEvent.emit(EditEvent.Failed)
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                android.util.Log.e("LibraryViewModel", "updateSongMetadata failed", e)
+                _editEvent.emit(EditEvent.Failed)
+            }
+        }
     }
 
     fun deletePlaylist(playlistId: Long) {
         viewModelScope.launch { deletePlaylistUseCase(playlistId) }
+    }
+
+    fun createPlaylist(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isNotEmpty()) {
+            viewModelScope.launch { playlistRepository.createPlaylist(trimmed) }
+        }
     }
 
     fun updatePlaylistInfo(id: Long, name: String, description: String?, coverUri: String?) {
@@ -126,10 +191,83 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun updateAlbumInfo(albumId: Long, newAlbum: String, newArtist: String) {
-        viewModelScope.launch { musicRepository.updateAlbumInfo(albumId, newAlbum, newArtist) }
+        viewModelScope.launch {
+            try {
+                when (val r = musicRepository.updateAlbumInfo(albumId, newAlbum, newArtist)) {
+                    is EditResult.NeedsConfirmation -> _editConfirmation.value = r.requestId
+                    EditResult.Success -> _editEvent.emit(EditEvent.Saved)
+                    EditResult.Error -> _editEvent.emit(EditEvent.Failed)
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                android.util.Log.e("LibraryViewModel", "updateAlbumInfo failed", e)
+                _editEvent.emit(EditEvent.Failed)
+            }
+        }
     }
 
-    fun deleteAlbumSongs(albumId: Long, songs: List<Song>) {
-        viewModelScope.launch { musicRepository.deleteAlbumSongs(albumId, songs) }
+    fun deleteAlbumSongs(albumId: Long) {
+        viewModelScope.launch {
+            when (val r = musicRepository.deleteAlbumSongs(albumId)) {
+                is DeleteResult.NeedsConfirmation -> _deleteConfirmation.value = r.requestId
+                DeleteResult.Success -> _deleteEvent.emit(DeleteEvent.Deleted)
+                DeleteResult.Error -> _deleteEvent.emit(DeleteEvent.Failed)
+            }
+        }
+    }
+
+    fun onDeleteDialogResult(requestId: Long, success: Boolean) {
+        viewModelScope.launch {
+            if (success) {
+                musicRepository.commitDelete(requestId)
+                val moreSenders = deleteManager.hasMoreSenders(requestId)
+                if (moreSenders) {
+                    // keep _deleteConfirmation, UI will launch next sender
+                } else {
+                    _deleteConfirmation.value = null
+                    _deleteEvent.emit(DeleteEvent.Deleted)
+                }
+            } else {
+                musicRepository.cancelDelete(requestId)
+                _deleteConfirmation.value = null
+                _deleteEvent.emit(DeleteEvent.Cancelled)
+            }
+        }
+    }
+
+    fun intentSenderForConfirmation(): IntentSender? {
+        val reqId = _deleteConfirmation.value ?: return null
+        return deleteManager.intentSenderFor(reqId)
+    }
+
+    fun onEditDialogResult(requestId: Long, success: Boolean) {
+        viewModelScope.launch {
+            try {
+                if (success) {
+                    musicRepository.commitEdit(requestId)
+                    val moreSenders = editManager.hasMoreSenders(requestId)
+                    if (moreSenders) {
+                        // keep _editConfirmation, UI will launch next sender
+                    } else {
+                        _editConfirmation.value = null
+                        _editEvent.emit(EditEvent.Saved)
+                    }
+                } else {
+                    musicRepository.cancelEdit(requestId)
+                    _editConfirmation.value = null
+                    _editEvent.emit(EditEvent.Cancelled)
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                android.util.Log.e("LibraryViewModel", "onEditDialogResult failed", e)
+                _editConfirmation.value = null
+                _editEvent.emit(EditEvent.Failed)
+            }
+        }
+    }
+
+    fun intentSenderForEditConfirmation(): IntentSender? {
+        val reqId = _editConfirmation.value ?: return null
+        return editManager.intentSenderFor(reqId)
     }
 }

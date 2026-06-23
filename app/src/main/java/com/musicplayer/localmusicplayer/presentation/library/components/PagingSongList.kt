@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
@@ -19,7 +20,8 @@ fun PagingSongList(
     pagingFlow: Flow<PagingData<Song>>,
     onSongClick: (Song) -> Unit,
     onSongMenuClick: ((Song) -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    horizontalPadding: Dp = 16.dp
 ) {
     @Suppress("DEPRECATION")
     val lazyItems: LazyPagingItems<Song> = pagingFlow.collectAsLazyPagingItems()
@@ -41,7 +43,8 @@ fun PagingSongList(
                 SongItem(
                     song = song,
                     onClick = { onSongClick(song) },
-                    onMenuClick = onSongMenuClick?.let { { it(song) } }
+                    onMenuClick = onSongMenuClick?.let { { it(song) } },
+                    horizontalPadding = horizontalPadding
                 )
             }
         }

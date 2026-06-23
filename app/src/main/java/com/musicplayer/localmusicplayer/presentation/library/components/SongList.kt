@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import com.musicplayer.localmusicplayer.R
 import com.musicplayer.localmusicplayer.domain.model.Song
 
@@ -17,7 +18,8 @@ fun SongList(
     songs: List<Song>,
     onSongClick: (Song) -> Unit,
     onSongMenuClick: ((Song) -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    horizontalPadding: Dp = 16.dp
 ) {
     if (songs.isEmpty()) {
         Box(
@@ -36,7 +38,8 @@ fun SongList(
                 SongItem(
                     song = song,
                     onClick = { onSongClick(song) },
-                    onMenuClick = onSongMenuClick?.let { { it(song) } }
+                    onMenuClick = onSongMenuClick?.let { { it(song) } },
+                    horizontalPadding = horizontalPadding
                 )
             }
         }

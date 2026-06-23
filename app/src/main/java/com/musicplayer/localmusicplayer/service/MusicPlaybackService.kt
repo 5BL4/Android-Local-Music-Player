@@ -16,6 +16,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,6 +50,7 @@ class MusicPlaybackService : MediaSessionService() {
     private var isShuffleEnabled: Boolean = false
     private var repeatMode: RepeatMode = RepeatMode.All
     private var positionUpdateJob: Job? = null
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var endedNormally: Boolean = false
 
     // State emitted to PlaybackManager / ViewModels
@@ -58,27 +61,42 @@ class MusicPlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+        try {
+            val player = ExoPlayer.Builder(this).build().apply {
+                repeatMode = Player.REPEAT_MODE_OFF
+                addListener(playbackListener)
+            }
+            exoPlayer = player
 
-        val player = ExoPlayer.Builder(this).build().apply {
-            repeatMode = Player.REPEAT_MODE_OFF
-            addListener(playbackListener)
+            // Audio focus
+            audioFocusManager.onFocusLoss          = { Log.d("Svc", "Focus LOSS");        player.playWhenReady = false }
+            audioFocusManager.onFocusLossTransient = { Log.d("Svc", "Focus LOSS_TRANS");  player.playWhenReady = false }
+            audioFocusManager.onFocusGain          = { Log.d("Svc", "Focus GAIN");        if (player.mediaItemCount > 0) player.playWhenReady = true }
+            audioFocusManager.onFocusDuck          = { Log.d("Svc", "Focus DUCK");        player.volume = 0.3f }
+            audioFocusManager.onFocusGainAfterTransient = { Log.d("Svc", "Focus GAIN+"); player.volume = 1f; player.playWhenReady = true }
+
+            // MediaSession bound to this Service's player
+            mediaSession = MediaSession.Builder(this, player).build()
+
+            // Hand the session token to PlaybackManager so UI can bind via MediaController
+            val session = mediaSession
+            if (session != null) {
+                playbackManager.bindSessionToken(session.token, this)
+            } else {
+                Log.e("Svc", "MediaSession build returned null")
+                stopSelf()
+                return
+            }
+
+            Log.d("Svc", "Service created, session ready")
+        } catch (e: Exception) {
+            Log.e("Svc", "Failed to initialize playback service", e)
+            exoPlayer?.release()
+            exoPlayer = null
+            mediaSession?.release()
+            mediaSession = null
+            stopSelf()
         }
-        exoPlayer = player
-
-        // Audio focus
-        audioFocusManager.onFocusLoss          = { Log.d("Svc", "Focus LOSS");        player.playWhenReady = false }
-        audioFocusManager.onFocusLossTransient = { Log.d("Svc", "Focus LOSS_TRANS");  player.playWhenReady = false }
-        audioFocusManager.onFocusGain          = { Log.d("Svc", "Focus GAIN");        if (player.mediaItemCount > 0) player.playWhenReady = true }
-        audioFocusManager.onFocusDuck          = { Log.d("Svc", "Focus DUCK");        player.volume = 0.3f }
-        audioFocusManager.onFocusGainAfterTransient = { Log.d("Svc", "Focus GAIN+"); player.volume = 1f; player.playWhenReady = true }
-
-        // MediaSession bound to this Service's player
-        mediaSession = MediaSession.Builder(this, player).build()
-
-        // Hand the session token to PlaybackManager so UI can bind via MediaController
-        playbackManager.bindSessionToken(mediaSession!!.token, this)
-
-        Log.d("Svc", "Service created, session ready")
     }
 
     override fun onGetSession(ci: MediaSession.ControllerInfo): MediaSession? = mediaSession
@@ -96,6 +114,7 @@ class MusicPlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         stopPositionUpdates()
+        serviceScope.cancel()
         mediaSession?.release(); mediaSession = null
         audioFocusManager.abandonFocus()
         exoPlayer?.release(); exoPlayer = null
@@ -106,12 +125,15 @@ class MusicPlaybackService : MediaSessionService() {
 
     fun svcPlay(song: Song, queue: List<Song>) {
         val p = exoPlayer ?: return
-        originalQueue = queue; originalIndex = queue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
+        // Guard against an empty queue (e.g. Paging source can't materialise the full list):
+        // fall back to a single-item queue so playback actually starts.
+        val effectiveQueue = queue.ifEmpty { listOf(song) }
+        originalQueue = effectiveQueue; originalIndex = effectiveQueue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
         if (isShuffleEnabled) {
-            currentQueue = listOf(song) + queue.filter { it.id != song.id }.shuffled()
+            currentQueue = listOf(song) + effectiveQueue.filter { it.id != song.id }.shuffled()
             currentIndex = 0
         } else {
-            currentQueue = queue; currentIndex = originalIndex
+            currentQueue = effectiveQueue; currentIndex = originalIndex
         }
         p.setMediaItems(currentQueue.map { it.toMediaItem() }, currentIndex, 0L)
         p.playWhenReady = true; p.prepare()
@@ -130,8 +152,23 @@ class MusicPlaybackService : MediaSessionService() {
     fun svcSkipToNext() {
         val p = exoPlayer ?: return
         if (currentQueue.isEmpty()) return
-        if (repeatMode == RepeatMode.One) { p.seekTo(0); p.playWhenReady = true }
-        else { p.seekToNextMediaItem(); p.playWhenReady = true }
+        when (repeatMode) {
+            RepeatMode.One -> { p.seekTo(0); p.playWhenReady = true }
+            else -> {
+                val next = if (currentIndex < currentQueue.size - 1) {
+                    currentIndex + 1
+                } else if (repeatMode == RepeatMode.All) {
+                    0
+                } else {
+                    return // RepeatMode.Off at last item: do nothing
+                }
+                if (next in currentQueue.indices) {
+                    currentIndex = next
+                    p.seekToDefaultPosition(next)
+                    p.playWhenReady = true
+                }
+            }
+        }
     }
 
     fun svcSkipToPrevious() {
@@ -163,6 +200,49 @@ class MusicPlaybackService : MediaSessionService() {
     }
 
     fun svcGetQueue(): List<Song> = currentQueue
+
+    fun svcRemoveDeletedSongs(songIds: List<Long>) {
+        if (songIds.isEmpty()) return
+        val p = exoPlayer ?: return
+        val wasPlayingCurrent = currentQueue.getOrNull(currentIndex)?.id in songIds
+
+        // 从队列中移除被删歌曲
+        val newQueue = currentQueue.filter { it.id !in songIds }
+        val newOriginalQueue = originalQueue.filter { it.id !in songIds }
+
+        if (newQueue.isEmpty()) {
+            currentQueue = emptyList()
+            originalQueue = emptyList()
+            currentIndex = -1
+            originalIndex = -1
+            p.clearMediaItems()
+            emitState()
+            return
+        }
+
+        // 计算新的当前索引
+        val currentSong = currentQueue.getOrNull(currentIndex)
+        val newIndex = if (currentSong != null) {
+            newQueue.indexOfFirst { it.id == currentSong.id }
+        } else 0
+
+        currentQueue = newQueue
+        originalQueue = newOriginalQueue
+        currentIndex = newIndex.coerceAtLeast(0)
+
+        if (wasPlayingCurrent) {
+            // 当前播放项被删，跳到新索引（即下一首）
+            p.setMediaItems(currentQueue.map { it.toMediaItem() }, currentIndex, 0L)
+            p.playWhenReady = true
+            p.prepare()
+        } else {
+            // 当前播放项未删，保持播放位置
+            val pos = p.currentPosition
+            p.setMediaItems(currentQueue.map { it.toMediaItem() }, currentIndex, pos)
+        }
+        emitState()
+    }
+
     fun svcAudioSessionId(): Int = exoPlayer?.audioSessionId ?: 0
     fun svcGetState(): StateFlow<PlaybackState> = _playbackState
     fun svcGetPosition(): StateFlow<Long> = _currentPosition
@@ -193,10 +273,19 @@ class MusicPlaybackService : MediaSessionService() {
             val idx = exoPlayer?.currentMediaItemIndex ?: -1
             if (idx != currentIndex && idx in currentQueue.indices) { currentIndex = idx; emitState() }
         }
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            Log.e("Svc", "Player error, skipping to next", error)
+            // 播放错误（如文件已被删除），跳到下一首
+            svcSkipToNext()
+        }
     }
 
     private fun emitState() {
         val p = exoPlayer
+        // Sync audio session id to PlaybackManager — ExoPlayer assigns the real
+        // session id after prepare, so the value read at bindSessionToken time
+        // (service onCreate, before any media is loaded) is 0.
+        playbackManager.updateAudioSessionId(p?.audioSessionId ?: 0)
         val song = currentQueue.getOrNull(currentIndex)
         if (song == null) { _playbackState.value = PlaybackState.Idle; return }
         _playbackState.value = when {
@@ -209,31 +298,35 @@ class MusicPlaybackService : MediaSessionService() {
 
     private fun startPositionUpdates() {
         positionUpdateJob?.cancel()
-        positionUpdateJob = CoroutineScope(Dispatchers.Main).launch {
+        positionUpdateJob = serviceScope.launch {
             while (isActive) { exoPlayer?.let { _currentPosition.value = it.currentPosition }; delay(Constants.POSITION_UPDATE_INTERVAL_MS) }
         }
     }
     private fun stopPositionUpdates() { positionUpdateJob?.cancel(); positionUpdateJob = null }
 
     private fun launchNotificationObserver() {
-        CoroutineScope(Dispatchers.Main).launch {
-            _playbackState.collect { state ->
-                when (state) {
-                    is PlaybackState.Playing -> {
-                        if (!wasInForeground) audioFocusManager.requestFocus()
-                        startForeground(Constants.NOTIFICATION_ID, mediaNotificationManager.buildNotification(state.currentSong, true))
-                        wasInForeground = true
+        serviceScope.launch {
+            try {
+                _playbackState.collect { state ->
+                    when (state) {
+                        is PlaybackState.Playing -> {
+                            if (!wasInForeground) audioFocusManager.requestFocus()
+                            startForeground(Constants.NOTIFICATION_ID, mediaNotificationManager.buildNotification(state.currentSong, true))
+                            wasInForeground = true
+                        }
+                        is PlaybackState.Paused -> {
+                            mediaNotificationManager.notify(mediaNotificationManager.buildNotification(state.currentSong, false))
+                            stopForeground(false); wasInForeground = false
+                        }
+                        is PlaybackState.Idle -> {
+                            stopForeground(STOP_FOREGROUND_REMOVE); mediaNotificationManager.cancel()
+                            audioFocusManager.abandonFocus(); wasInForeground = false; stopSelf()
+                        }
+                        else -> {}
                     }
-                    is PlaybackState.Paused -> {
-                        mediaNotificationManager.notify(mediaNotificationManager.buildNotification(state.currentSong, false))
-                        stopForeground(false); wasInForeground = false
-                    }
-                    is PlaybackState.Idle -> {
-                        stopForeground(STOP_FOREGROUND_REMOVE); mediaNotificationManager.cancel()
-                        audioFocusManager.abandonFocus(); wasInForeground = false; stopSelf()
-                    }
-                    else -> {}
                 }
+            } catch (e: Exception) {
+                Log.e("Svc", "Notification observer failed", e)
             }
         }
     }

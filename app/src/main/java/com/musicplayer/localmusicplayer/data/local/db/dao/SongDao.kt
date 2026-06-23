@@ -44,6 +44,26 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%' ORDER BY title ASC")
     fun pagingSourceBySearch(query: String): PagingSource<Int, SongEntity>
 
+    // ─── One-shot sorted queries (for play queue) ──────────────
+
+    @Query("SELECT * FROM songs ORDER BY title ASC")
+    suspend fun getAllByTitle(): List<SongEntity>
+
+    @Query("SELECT * FROM songs ORDER BY artist ASC, title ASC")
+    suspend fun getAllByArtist(): List<SongEntity>
+
+    @Query("SELECT * FROM songs ORDER BY album ASC, title ASC")
+    suspend fun getAllByAlbum(): List<SongEntity>
+
+    @Query("SELECT * FROM songs ORDER BY date_added DESC")
+    suspend fun getAllByDateAdded(): List<SongEntity>
+
+    @Query("SELECT * FROM songs ORDER BY duration ASC")
+    suspend fun getAllByDuration(): List<SongEntity>
+
+    @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%' ORDER BY title ASC")
+    suspend fun searchAll(query: String): List<SongEntity>
+
     // ─── Legacy list queries (kept for albums/artists/playlists) ─
 
     @Query("SELECT * FROM songs ORDER BY title ASC")
@@ -63,6 +83,9 @@ interface SongDao {
 
     @Query("SELECT * FROM songs WHERE album_id = :albumId ORDER BY track_number ASC, title ASC")
     fun getSongsByAlbum(albumId: Long): Flow<List<SongEntity>>
+
+    @Query("SELECT * FROM songs WHERE album_id = :albumId ORDER BY track_number ASC, title ASC")
+    suspend fun getSongsByAlbumOnce(albumId: Long): List<SongEntity>
 
     @Query("SELECT * FROM songs WHERE artist = :artist ORDER BY album ASC, track_number ASC")
     fun getSongsByArtist(artist: String): Flow<List<SongEntity>>

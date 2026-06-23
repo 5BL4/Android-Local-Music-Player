@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
@@ -59,11 +57,6 @@ fun PlaylistDetailScreen(
                             text = uiState.playlist?.name ?: stringResource(R.string.playlists),
                             modifier = Modifier.clickable { viewModel.startEditing() }
                         )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -153,17 +146,13 @@ fun PlaylistDetailScreen(
                                 }
                         )
                         // Song content
-                        Box(modifier = Modifier.weight(1f)) {
-                            SongItem(
-                                song = song,
-                                onClick = { viewModel.playSong(song) },
-                                onMenuClick = { songToDelete = song }
-                            )
-                        }
-                        // Delete button
-                        IconButton(onClick = { songToDelete = song }) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error)
-                        }
+                        SongItem(
+                            song = song,
+                            onClick = { viewModel.playSong(song) },
+                            onMenuClick = { songToDelete = song },
+                            modifier = Modifier.weight(1f),
+                            horizontalPadding = 4.dp
+                        )
                     }
                     if (index < uiState.songs.size - 1) {
                         Divider(modifier = Modifier.padding(horizontal = 16.dp))

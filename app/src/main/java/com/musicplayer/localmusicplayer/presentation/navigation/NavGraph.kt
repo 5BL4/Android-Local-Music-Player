@@ -13,10 +13,12 @@ import androidx.navigation.navArgument
 import com.musicplayer.localmusicplayer.presentation.albumdetail.AlbumDetailScreen
 import com.musicplayer.localmusicplayer.presentation.artistdetail.ArtistDetailScreen
 import com.musicplayer.localmusicplayer.presentation.equalizer.EqualizerScreen
-import com.musicplayer.localmusicplayer.presentation.library.LibraryScreen
+import com.musicplayer.localmusicplayer.presentation.library.AlbumsScreen
+import com.musicplayer.localmusicplayer.presentation.library.ArtistsScreen
+import com.musicplayer.localmusicplayer.presentation.library.PlaylistsScreen
+import com.musicplayer.localmusicplayer.presentation.library.SongsScreen
 import com.musicplayer.localmusicplayer.presentation.lyrics.LyricsScreen
 import com.musicplayer.localmusicplayer.presentation.player.PlayerScreen
-import com.musicplayer.localmusicplayer.presentation.playlist.PlaylistScreen
 import com.musicplayer.localmusicplayer.presentation.playlistdetail.PlaylistDetailScreen
 import com.musicplayer.localmusicplayer.presentation.settings.SettingsScreen
 
@@ -24,21 +26,34 @@ import com.musicplayer.localmusicplayer.presentation.settings.SettingsScreen
 fun NavGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Library.route
+        startDestination = Screen.Songs.route
     ) {
-        composable(Screen.Library.route) {
-            LibraryScreen(
+        composable(Screen.Songs.route) {
+            SongsScreen(
+                onPlayerOpen = { navController.navigate(Screen.Player.route) }
+            )
+        }
+
+        composable(Screen.Albums.route) {
+            AlbumsScreen(
                 onAlbumClick = { albumId ->
                     navController.navigate(Screen.AlbumDetail(albumId).route)
-                },
+                }
+            )
+        }
+
+        composable(Screen.Artists.route) {
+            ArtistsScreen(
                 onArtistClick = { artistName ->
                     navController.navigate(Screen.ArtistDetail(artistName).route)
-                },
+                }
+            )
+        }
+
+        composable(Screen.Playlists.route) {
+            PlaylistsScreen(
                 onPlaylistClick = { playlistId ->
                     navController.navigate(Screen.PlaylistDetail(playlistId).route)
-                },
-                onPlayerOpen = {
-                    navController.navigate(Screen.Player.route)
                 }
             )
         }
@@ -85,15 +100,6 @@ fun NavGraph(navController: NavHostController) {
                     onBack = { navController.popBackStack() }
                 )
             }
-        }
-
-        composable(Screen.Playlists.route) {
-            PlaylistScreen(
-                onPlaylistClick = { playlistId ->
-                    navController.navigate(Screen.PlaylistDetail(playlistId).route)
-                },
-                onBack = { navController.popBackStack() }
-            )
         }
 
         composable(

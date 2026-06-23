@@ -114,6 +114,9 @@ dependencies {
     implementation("androidx.paging:paging-compose:3.3.4")
     implementation("androidx.room:room-paging:2.7.0")
 
+    // Audio tag editing (ID3/Vorbis/MP4 metadata read+write) — Android-compatible fork
+    implementation("com.github.AdrienPoupa:jaudiotagger:2.2.3")
+
     // === Unit tests (app/src/test/) ===
     testImplementation(libs.junit)
     testImplementation(libs.turbine)

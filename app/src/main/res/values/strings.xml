@@ -108,4 +108,9 @@
     <string name="delete_menu">Delete</string>
     <string name="song_disc_label">Disc No.</string>
     <string name="song_genre_label">Genre</string>
+    <string name="edit_saved">Saved</string>
+    <string name="edit_failed">Failed to save</string>
+    <string name="edit_cancelled">Cancelled</string>
+    <string name="delete_failed">Failed to delete</string>
+    <string name="delete_cancelled">Cancelled</string>
 </resources>
