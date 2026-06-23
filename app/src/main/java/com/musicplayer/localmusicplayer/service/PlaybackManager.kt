@@ -138,7 +138,14 @@ class PlaybackManager @Inject constructor(
     fun getCurrentQueue(): List<Song> = svc?.svcGetQueue() ?: currentQueue
 
     fun removeDeletedSongs(songIds: List<Long>) {
-        svc?.svcRemoveDeletedSongs(songIds)
+        try {
+            svc?.svcRemoveDeletedSongs(songIds)
+        } catch (e: Exception) {
+            // Service may be unbinding or the ExoPlayer may be in a transitional state.
+            // The songs are already deleted from MediaStore and Room — failing to update
+            // the in-memory queue is non-fatal and must not crash the delete flow.
+            android.util.Log.w("PlaybackManager", "removeDeletedSongs skipped", e)
+        }
     }
 
     fun updateAudioSessionId(sessionId: Int) {

@@ -147,10 +147,16 @@ class LibraryViewModel @Inject constructor(
 
     fun deleteSongFile(song: Song) {
         viewModelScope.launch {
-            when (val r = musicRepository.deleteSongFile(song)) {
-                is DeleteResult.NeedsConfirmation -> _deleteConfirmation.value = r.requestId
-                DeleteResult.Success -> _deleteEvent.emit(DeleteEvent.Deleted)
-                DeleteResult.Error -> _deleteEvent.emit(DeleteEvent.Failed)
+            try {
+                when (val r = musicRepository.deleteSongFile(song)) {
+                    is DeleteResult.NeedsConfirmation -> _deleteConfirmation.value = r.requestId
+                    DeleteResult.Success -> _deleteEvent.emit(DeleteEvent.Deleted)
+                    DeleteResult.Error -> _deleteEvent.emit(DeleteEvent.Failed)
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                android.util.Log.e("LibraryViewModel", "deleteSongFile failed", e)
+                _deleteEvent.emit(DeleteEvent.Failed)
             }
         }
     }
@@ -208,29 +214,42 @@ class LibraryViewModel @Inject constructor(
 
     fun deleteAlbumSongs(albumId: Long) {
         viewModelScope.launch {
-            when (val r = musicRepository.deleteAlbumSongs(albumId)) {
-                is DeleteResult.NeedsConfirmation -> _deleteConfirmation.value = r.requestId
-                DeleteResult.Success -> _deleteEvent.emit(DeleteEvent.Deleted)
-                DeleteResult.Error -> _deleteEvent.emit(DeleteEvent.Failed)
+            try {
+                when (val r = musicRepository.deleteAlbumSongs(albumId)) {
+                    is DeleteResult.NeedsConfirmation -> _deleteConfirmation.value = r.requestId
+                    DeleteResult.Success -> _deleteEvent.emit(DeleteEvent.Deleted)
+                    DeleteResult.Error -> _deleteEvent.emit(DeleteEvent.Failed)
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                android.util.Log.e("LibraryViewModel", "deleteAlbumSongs failed", e)
+                _deleteEvent.emit(DeleteEvent.Failed)
             }
         }
     }
 
     fun onDeleteDialogResult(requestId: Long, success: Boolean) {
         viewModelScope.launch {
-            if (success) {
-                musicRepository.commitDelete(requestId)
-                val moreSenders = deleteManager.hasMoreSenders(requestId)
-                if (moreSenders) {
-                    // keep _deleteConfirmation, UI will launch next sender
+            try {
+                if (success) {
+                    musicRepository.commitDelete(requestId)
+                    val moreSenders = deleteManager.hasMoreSenders(requestId)
+                    if (moreSenders) {
+                        // keep _deleteConfirmation, UI will launch next sender
+                    } else {
+                        _deleteConfirmation.value = null
+                        _deleteEvent.emit(DeleteEvent.Deleted)
+                    }
                 } else {
+                    musicRepository.cancelDelete(requestId)
                     _deleteConfirmation.value = null
-                    _deleteEvent.emit(DeleteEvent.Deleted)
+                    _deleteEvent.emit(DeleteEvent.Cancelled)
                 }
-            } else {
-                musicRepository.cancelDelete(requestId)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                android.util.Log.e("LibraryViewModel", "onDeleteDialogResult failed", e)
                 _deleteConfirmation.value = null
-                _deleteEvent.emit(DeleteEvent.Cancelled)
+                _deleteEvent.emit(DeleteEvent.Failed)
             }
         }
     }

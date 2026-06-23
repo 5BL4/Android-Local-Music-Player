@@ -39,7 +39,12 @@ fun AlbumGrid(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(items = albums, key = { it.albumId }) { album ->
+            // Composite key: albumId alone is NOT unique when an album edit partially fails.
+            // getAlbums() does SELECT DISTINCT album, album_id, artist, album_art_uri — so the
+            // same albumId can appear in two rows (old name vs new name) during/after a partial
+            // tag edit. Using albumId alone as the LazyVerticalGrid key throws
+            // IllegalArgumentException("Key X was already used") and crashes the app.
+            items(items = albums, key = { "${it.albumId}_${it.name}" }) { album ->
                 AlbumCard(
                     album = album,
                     onClick = { onAlbumClick(album.albumId) },
