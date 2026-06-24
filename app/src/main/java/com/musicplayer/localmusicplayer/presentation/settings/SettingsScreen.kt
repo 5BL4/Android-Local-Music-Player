@@ -151,8 +151,15 @@ fun SettingsScreen(
 
         Text(stringResource(R.string.about), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(8.dp))
-        Text("LocalMusicPlayer v1.3.0", style = MaterialTheme.typography.bodyMedium)
-        Text(stringResource(R.string.about_text), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val versionName = remember {
+            runCatching {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName
+            }.getOrNull() ?: ""
+        }
+        ListItem(
+            headlineContent = { Text("LocalMusicPlayer v$versionName") },
+            supportingContent = { Text(stringResource(R.string.about_text)) }
+        )
     }
 
     // --- AlertDialog Pickers (matching sleep timer style) ---
