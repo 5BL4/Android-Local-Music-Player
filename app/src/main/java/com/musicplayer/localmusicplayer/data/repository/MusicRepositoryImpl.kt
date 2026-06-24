@@ -86,20 +86,30 @@ class MusicRepositoryImpl @Inject constructor(
         }
         val scannedMsIds = scanned.map { it.mediaStoreId }
 
-        // Fast delete+insert: delete existing rows that will be replaced
+        // Remove songs that are no longer in MediaStore. The CASCADE foreign key on
+        // playlist_song_cross_ref will drop their playlist memberships — intended,
+        // since the underlying file is gone.
         if (scannedMsIds.isNotEmpty()) {
-            songDao.deleteMissingSongs(scannedMsIds) // deletes songs NOT in scanned list
+            songDao.deleteMissingSongs(scannedMsIds)
         }
-        // Delete matching old entries, then insert fresh
-        val existingToReplace = if (scannedMsIds.isNotEmpty()) {
-            songDao.getSongsByMediaStoreIds(scannedMsIds)
-        } else emptyList()
-        if (existingToReplace.isNotEmpty()) {
-            songDao.deleteSongsByIds(existingToReplace.map { it.id })
-        }
-        // Insert all scanned songs as new rows
+
+        // Preserve existing row identity (the auto-generated `id`) across rescans.
+        // playlist_song_cross_ref.song_id references songs.id via an ON DELETE CASCADE
+        // foreign key, so deleting/re-inserting songs here would wipe every playlist
+        // association on each scan. Reuse the existing id for songs already in the DB
+        // (upsert updates the row in place) and only auto-generate ids for genuinely
+        // new songs.
+        val existingIdByMsId: Map<Long, Long> = if (scannedMsIds.isNotEmpty()) {
+            songDao.getSongsByMediaStoreIds(scannedMsIds).associate { it.mediaStoreId to it.id }
+        } else emptyMap()
+
         if (scanned.isNotEmpty()) {
-            songDao.upsertAll(scanned.map { it.copy(id = 0) })
+            songDao.upsertAll(
+                scanned.map { entity ->
+                    val existingId = existingIdByMsId[entity.mediaStoreId]
+                    if (existingId != null) entity.copy(id = existingId) else entity.copy(id = 0)
+                }
+            )
         }
     }
 
