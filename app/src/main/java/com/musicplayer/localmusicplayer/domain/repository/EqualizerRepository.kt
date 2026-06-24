@@ -13,6 +13,5 @@ interface EqualizerRepository {
     fun setEnabled(enabled: Boolean)
     fun setBandLevel(band: Int, level: Int)
     fun usePreset(presetIndex: Int)
-    fun setAudioSessionId(sessionId: Int)
     fun release()
 }

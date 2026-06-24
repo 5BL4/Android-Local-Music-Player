@@ -1,13 +1,10 @@
 package com.musicplayer.localmusicplayer.presentation.equalizer
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.musicplayer.localmusicplayer.domain.model.EqualizerPreset
 import com.musicplayer.localmusicplayer.domain.repository.EqualizerRepository
-import com.musicplayer.localmusicplayer.domain.repository.MusicRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class EqualizerUiState(
@@ -26,25 +23,16 @@ data class BandState(
 
 @HiltViewModel
 class EqualizerViewModel @Inject constructor(
-    private val equalizerRepository: EqualizerRepository,
-    private val musicRepository: MusicRepository
+    private val equalizerRepository: EqualizerRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EqualizerUiState())
     val uiState: StateFlow<EqualizerUiState> = _uiState.asStateFlow()
 
     init {
-        // Initialize equalizer with audio session
-        viewModelScope.launch {
-            musicRepository.playbackState.collect { state ->
-                val sessionId = musicRepository.audioSessionId
-                if (sessionId != 0 && !_uiState.value.isInitialized) {
-                    equalizerRepository.setAudioSessionId(sessionId)
-                    refreshState()
-                    _uiState.update { it.copy(isInitialized = true) }
-                }
-            }
-        }
+        // Software EQ is always available — no need to wait for an audio session.
+        refreshState()
+        _uiState.update { it.copy(isInitialized = true) }
     }
 
     private fun refreshState() {
@@ -76,7 +64,8 @@ class EqualizerViewModel @Inject constructor(
             state.copy(
                 bands = state.bands.map {
                     if (it.index == band) it.copy(levelDb = level) else it
-                }
+                },
+                currentPresetIndex = equalizerRepository.currentPresetIndex
             )
         }
     }

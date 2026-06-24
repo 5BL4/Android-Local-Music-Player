@@ -110,15 +110,15 @@ fun AlbumDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(uiState.albumName.ifEmpty { stringResource(R.string.unknown_album) }) }
-            )
-        },
-        floatingActionButton = {
-            if (uiState.songs.isNotEmpty()) {
-                FloatingActionButton(onClick = { viewModel.playAll() }) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.play_all))
+                title = { Text(uiState.albumName.ifEmpty { stringResource(R.string.unknown_album) }) },
+                actions = {
+                    if (uiState.songs.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.playAll() }) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.play_all))
+                        }
+                    }
                 }
-            }
+            )
         }
     ) { padding ->
         if (uiState.isLoading) {

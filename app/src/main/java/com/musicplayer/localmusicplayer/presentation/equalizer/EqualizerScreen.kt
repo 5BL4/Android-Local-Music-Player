@@ -15,11 +15,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.musicplayer.localmusicplayer.R
 
 private val PRESET_ZH: Map<String, String> = mapOf(
-    "Normal" to "普通", "Classical" to "古典", "Dance" to "舞曲",
-    "Flat" to "平坦", "Folk" to "民谣", "Heavy Metal" to "重金属",
+    "Classical" to "古典", "Dance" to "舞曲",
+    "Folk" to "民谣", "Heavy Metal" to "重金属",
     "Hip Hop" to "嘻哈", "Jazz" to "爵士", "Pop" to "流行",
     "Rock" to "摇滚", "R&B" to "节奏蓝调", "Latin" to "拉丁",
-    "Custom" to "自定义"
+    "Country" to "乡村", "Custom" to "自定义"
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,17 +44,12 @@ fun EqualizerScreen(
             )
         }
     ) { padding ->
-        if (!uiState.isInitialized) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text(stringResource(R.string.equalizer_description))
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(8.dp)
-            ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(8.dp)
+        ) {
                 var expanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(
                     expanded = expanded,
@@ -135,6 +130,5 @@ fun EqualizerScreen(
                     }
                 }
             }
-        }
     }
 }

@@ -8,6 +8,8 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.musicplayer.localmusicplayer.audio.EqualizerAudioProcessor
+import com.musicplayer.localmusicplayer.audio.EqualizerRenderersFactory
 import com.musicplayer.localmusicplayer.domain.model.PlaybackState
 import com.musicplayer.localmusicplayer.domain.model.RepeatMode
 import com.musicplayer.localmusicplayer.domain.model.Song
@@ -37,6 +39,7 @@ class MusicPlaybackService : MediaSessionService() {
     @Inject lateinit var audioFocusManager: AudioFocusManager
     @Inject lateinit var mediaNotificationManager: MediaNotificationManager
     @Inject lateinit var playbackManager: PlaybackManager
+    @Inject lateinit var equalizerAudioProcessor: EqualizerAudioProcessor
 
     private var mediaSession: MediaSession? = null
     private var exoPlayer: ExoPlayer? = null
@@ -62,7 +65,10 @@ class MusicPlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         try {
-            val player = ExoPlayer.Builder(this).build().apply {
+            val player = ExoPlayer.Builder(
+                this,
+                EqualizerRenderersFactory(this, equalizerAudioProcessor)
+            ).build().apply {
                 repeatMode = Player.REPEAT_MODE_OFF
                 addListener(playbackListener)
             }
