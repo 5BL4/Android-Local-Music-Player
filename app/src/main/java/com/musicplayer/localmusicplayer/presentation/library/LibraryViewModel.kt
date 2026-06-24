@@ -81,9 +81,12 @@ class LibraryViewModel @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val songPagingFlow: Flow<PagingData<Song>> =
-        _uiState.flatMapLatest { state ->
-            musicRepository.getSongsPaged(state.sortOption, state.searchQuery)
-        }.cachedIn(viewModelScope)
+        _uiState
+            .map { it.sortOption to it.searchQuery }
+            .distinctUntilChanged()
+            .flatMapLatest { (sortOption, searchQuery) ->
+                musicRepository.getSongsPaged(sortOption, searchQuery)
+            }.cachedIn(viewModelScope)
 
     init {
         viewModelScope.launch {
