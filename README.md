@@ -2,7 +2,7 @@
 
 一款基于 Jetpack Compose + Material 3 的 Android 本地音乐播放器，采用 MVVM + Clean Architecture 架构，支持后台播放、在线歌词搜索、音频标签编辑、播放列表管理、均衡器与多彩主题。
 
-- 当前版本：**v1.3.0**（versionCode 7）
+- 当前版本：**v1.4.0**（versionCode 8）
 - 最低支持：Android 8.0（API 26）
 - 目标 SDK：Android 14（API 35）
 - 包名：`com.musicplayer.localmusicplayer`
@@ -44,7 +44,7 @@
 ### 个性化
 - **10 色主题**：白 / 黑 / 红 / 橙 / 黄 / 绿 / 蓝 / 紫 / 粉 / 灰（基于种子色的自定义配色，非 Material You 动态取色）
 - **主题模式**：亮色 / 暗色 / 跟随系统
-- **均衡器**：多频段竖直滑块、预设切换
+- **10 段均衡器**：基于 Media3 AudioProcessor 的软件均衡器，频点 32/100/250/500/1k/2k/4k/8k/12k/16k Hz，12 种预设（流行/摇滚/爵士/古典/舞曲/嘻哈/R&B/乡村/重金属/民谣/拉丁/自定义），-15dB ~ +15dB 增益，竖直滑块
 - **多语言**：中文（默认）/ 英文，DataStore 持久化
 
 ---
@@ -103,6 +103,7 @@ app/src/main/java/com/musicplayer/localmusicplayer/
 │   └── navigation/                  # 导航图（Screen.kt）
 │
 ├── service/                         # ExoPlayer 播放服务 + PlaybackManager
+├── audio/                           # 软件均衡器（BiquadFilter / EqualizerAudioProcessor / RenderersFactory）
 ├── di/                              # Hilt 依赖注入模块
 └── util/                            # 工具类（时间格式化、歌词解析、语言助手等）
 ```
@@ -166,7 +167,7 @@ gradlew.bat :app:testDebugUnitTest
 gradlew.bat :app:connectedAndroidTest
 ```
 
-> **覆盖范围说明**：目前无 ViewModel、导航、Service、均衡器的测试。改动后至少应运行单元测试 + `assembleDebug`，并在真机上手动验证播放与导航。
+> **覆盖范围说明**：目前无 ViewModel、导航、Service、均衡器 AudioProcessor 的测试。改动后至少应运行单元测试 + `assembleDebug`，并在真机上手动验证播放、均衡器效果与导航。
 
 ---
 
@@ -182,6 +183,7 @@ gradlew.bat :app:connectedAndroidTest
 
 - **播放架构**：`MusicPlaybackService` 是 ExoPlayer 的唯一持有者；`PlaybackManager` 是 Hilt `@Singleton`，生命周期长于 Service，委托控制调用并镜像 Service 的 StateFlow 供 UI 消费。
 - **循环/随机**：手动在 Service 的 `STATE_ENDED` 处理器中实现，**未启用** ExoPlayer 原生 repeat，避免冲突。默认循环全部。
+- **均衡器**：v1.4.0 起基于 Media3 `AudioProcessor` 的**软件均衡器**，替代了原本依赖设备硬件的 `android.media.audiofx.Equalizer`。10 段固定频点（32 – 16000 Hz），12 种硬编码预设，通过自定义 `EqualizerRenderersFactory` 注入 ExoPlayer 音频管线。需注意 `setEnableFloatOutput(false)` 是必要条件——Media3 开启 float 输出时会绕过自定义处理器。
 - **专辑来源**：专辑不是独立表，而是从 `songs` 表通过 `SELECT DISTINCT album, album_id, artist, album_art_uri` 聚合而来。
 - **语言加载**：`MusicPlayerApplication.onCreate` 使用 `runBlocking` 在 Activity 启动前同步读取 DataStore 中的语言设置，确保 locale 正确应用——此同步读取是有意为之，请勿改为 suspend。
 - **主题**：自定义种子色配色，非 Material You 动态取色。`MusicPlayerTheme` 通过 `Application` 强转访问 `ThemeRepository`，而非 Hilt 注入。
@@ -204,6 +206,7 @@ gradlew.bat :app:connectedAndroidTest
 | 1.2.3 | - | 歌曲底部弹窗、三点菜单、播放列表图标 |
 | 1.2.4 | - | Album/Artist 歌曲菜单、专辑编辑删除、NowPlayingBar 背景 |
 | **1.3.0** | **7** | **在线歌词搜索、歌词内嵌、音源选择、LRC 解析引擎** |
+| **1.4.0** | **8** | **10 段软件均衡器（Biquad AudioProcessor）、12 种预设（新增 R&B/乡村、移除普通/平坦）、专辑详情页播放按钮移至右上角** |
 
 ---
 
