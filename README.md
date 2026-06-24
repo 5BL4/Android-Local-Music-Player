@@ -187,7 +187,7 @@ gradlew.bat :app:connectedAndroidTest
 - **专辑来源**：专辑不是独立表，而是从 `songs` 表通过 `SELECT DISTINCT album, album_id, artist, album_art_uri` 聚合而来。
 - **语言加载**：`MusicPlayerApplication.onCreate` 使用 `runBlocking` 在 Activity 启动前同步读取 DataStore 中的语言设置，确保 locale 正确应用——此同步读取是有意为之，请勿改为 suspend。
 - **主题**：自定义种子色配色，非 Material You 动态取色。`MusicPlayerTheme` 通过 `Application` 强转访问 `ThemeRepository`，而非 Hilt 注入。
-- **在线歌词 API**：第三方端点 `https://music-api.gdstudio.xyz/api.php`，非本仓库所有，可能不稳定，失败时应优雅降级到本地 `.lrc` 文件。
+- **在线歌词 API**：第三方端点 `https://music-api.gdstudio.xyz/api.php`（来源声明：GD音乐台(music.gdstudio.xyz)），非本仓库所有，可能不稳定，失败时应优雅降级到本地 `.lrc` 文件。
 
 ---
 
