@@ -2,7 +2,7 @@
 
 一款基于 Jetpack Compose + Material 3 的 Android 本地音乐播放器，采用 MVVM + Clean Architecture 架构，支持后台播放、在线歌词搜索、音频标签编辑、播放列表管理、均衡器与多彩主题。
 
-- 当前版本：**v1.4.0**（versionCode 8）
+- 当前版本：**v1.4.1**（versionCode 9）
 - 最低支持：Android 8.0（API 26）
 - 目标 SDK：Android 14（API 35）
 - 包名：`com.musicplayer.localmusicplayer`
@@ -207,6 +207,7 @@ gradlew.bat :app:connectedAndroidTest
 | 1.2.4 | - | Album/Artist 歌曲菜单、专辑编辑删除、NowPlayingBar 背景 |
 | **1.3.0** | **7** | **在线歌词搜索、歌词内嵌、音源选择、LRC 解析引擎** |
 | **1.4.0** | **8** | **10 段软件均衡器（Biquad AudioProcessor）、12 种预设（新增 R&B/乡村、移除普通/平坦）、专辑详情页播放按钮移至右上角** |
+| **1.4.1** | **9** | **替换应用启动图标** |
 
 ---
 
