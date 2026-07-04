@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.musicplayer.localmusicplayer.data.local.db.dao.PlaylistDao
 import com.musicplayer.localmusicplayer.data.local.db.dao.PlaylistSongCrossRefDao
 import com.musicplayer.localmusicplayer.data.local.db.entity.PlaylistEntity
+import com.musicplayer.localmusicplayer.domain.model.Playlist
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.coVerifyOrder
@@ -141,5 +142,30 @@ class PlaylistRepositoryImplTest {
         repository.removeSongFromPlaylist(playlistId, songId)
 
         coVerify { crossRefDao.removeSongFromPlaylist(playlistId, songId) }
+    }
+
+    @Test
+    fun `updatePlaylist preserves coverArtUri and description`() = runTest {
+        val playlist = Playlist(
+            id = 1L,
+            name = "My List",
+            description = "desc",
+            coverArtUri = "file:///covers/cover_123.jpg",
+            createdAt = 1000L,
+            updatedAt = 2000L
+        )
+
+        repository.updatePlaylist(playlist)
+
+        coVerify {
+            playlistDao.updatePlaylist(match { entity ->
+                entity.id == 1L &&
+                        entity.name == "My List" &&
+                        entity.description == "desc" &&
+                        entity.coverArtUri == "file:///covers/cover_123.jpg" &&
+                        entity.createdAt == 1000L &&
+                        entity.updatedAt >= 2000L
+            })
+        }
     }
 }

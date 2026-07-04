@@ -12,3 +12,12 @@ fun PlaylistEntity.toDomain(songCount: Int = 0): Playlist = Playlist(
     createdAt = createdAt,
     updatedAt = updatedAt
 )
+
+fun Playlist.toEntity(): PlaylistEntity = PlaylistEntity(
+    id = id,
+    name = name,
+    description = description,
+    coverArtUri = coverArtUri,
+    createdAt = createdAt,
+    updatedAt = updatedAt
+)

@@ -112,4 +112,24 @@ class LyricParserTest {
         assertEquals("hello", result[0].text)
         assertEquals(1000L, result[0].timestampMs)
     }
+
+    @Test
+    fun `parse merges lines sharing a timestamp into one entry`() {
+        // Embedded lyrics store original + translation as separate [mm:ss.xx]
+        // entries with identical timestamps (original block first, then translation).
+        val lrc = """
+            [00:01.000]English line
+            [00:02.000]Second line
+            [00:01.000]中文翻译
+            [00:02.000]第二行
+        """.trimIndent()
+
+        val result = LyricParser.parse(lrc)
+
+        assertEquals(2, result.size)
+        assertEquals(1000L, result[0].timestampMs)
+        assertEquals("English line\n中文翻译", result[0].text)
+        assertEquals(2000L, result[1].timestampMs)
+        assertEquals("Second line\n第二行", result[1].text)
+    }
 }

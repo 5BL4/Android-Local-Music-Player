@@ -66,7 +66,7 @@ fun EditPlaylistDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(name, pickedCoverUri) }) {
+            TextButton(onClick = { onSave(name, displayCover) }) {
                 Text(stringResource(R.string.save))
             }
         },

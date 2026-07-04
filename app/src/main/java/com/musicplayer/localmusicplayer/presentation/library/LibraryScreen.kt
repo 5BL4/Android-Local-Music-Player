@@ -530,7 +530,8 @@ fun PlaylistsScreen(
                     playlist = editTargetPlaylist!!,
                     pickedCoverUri = pickedCoverUri?.toString(),
                     onSave = { name, cover ->
-                        viewModel.updatePlaylistInfo(editTargetPlaylist!!.id, name, null, cover)
+                        val pl = editTargetPlaylist!!
+                        viewModel.updatePlaylistInfo(pl.id, name, pl.description, cover)
                         showEditPlaylistDialog = false
                         editTargetPlaylist = null
                         pickedCoverUri = null

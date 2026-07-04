@@ -21,5 +21,13 @@ object LyricParser {
                 }
             }
             .sortedBy { it.timestampMs }
+            // Merge lines that share a timestamp (e.g. original + translation pairs
+            // stored as separate [mm:ss.xx] entries) into a single LyricLine so both
+            // texts highlight together. groupBy keeps keys in ascending-timestamp
+            // order (list is already sorted) and preserves file order within a group.
+            .groupBy { it.timestampMs }
+            .map { (timestampMs, lines) ->
+                LyricLine(timestampMs, lines.joinToString("\n") { it.text })
+            }
     }
 }

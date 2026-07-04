@@ -5,6 +5,7 @@ import com.musicplayer.localmusicplayer.data.local.db.dao.PlaylistSongCrossRefDa
 import com.musicplayer.localmusicplayer.data.local.db.entity.PlaylistEntity
 import com.musicplayer.localmusicplayer.data.local.db.entity.PlaylistSongCrossRef
 import com.musicplayer.localmusicplayer.data.mapper.toDomain
+import com.musicplayer.localmusicplayer.data.mapper.toEntity
 import com.musicplayer.localmusicplayer.domain.model.Playlist
 import com.musicplayer.localmusicplayer.domain.model.Song
 import com.musicplayer.localmusicplayer.domain.repository.PlaylistRepository
@@ -37,13 +38,7 @@ class PlaylistRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updatePlaylist(playlist: Playlist) {
-        val entity = PlaylistEntity(
-            id = playlist.id,
-            name = playlist.name,
-            createdAt = playlist.createdAt,
-            updatedAt = System.currentTimeMillis()
-        )
-        playlistDao.updatePlaylist(entity)
+        playlistDao.updatePlaylist(playlist.toEntity().copy(updatedAt = System.currentTimeMillis()))
     }
 
     override suspend fun deletePlaylist(playlistId: Long) {
