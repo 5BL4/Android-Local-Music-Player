@@ -21,6 +21,9 @@ data class LyricsUiState(
     val currentLineIndex: Int = 0,
     val isLoading: Boolean = true,
     val error: String? = null,
+    // Scrub (seek-by-scroll): user is manually scrubbing the lyrics list
+    val isScrubbing: Boolean = false,
+    val scrubLineIndex: Int? = null,
     // Search
     val searchQuery: String = "",
     val searchSource: String = "netease",
@@ -77,13 +80,42 @@ class LyricsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             musicRepository.currentPosition.collect { position ->
-                val lyrics = _uiState.value.lyrics
+                val state = _uiState.value
+                val lyrics = state.lyrics
                 if (lyrics.isNotEmpty()) {
                     val idx = lyrics.indexOfLast { it.timestampMs <= position }
-                    _uiState.update { it.copy(currentLineIndex = idx.coerceAtLeast(0)) }
+                    val newCurrent = idx.coerceAtLeast(0)
+                    // Auto-clear scrubbing once playback has caught up to (or passed)
+                    // the line the user was targeting. Position updates tick every
+                    // 250ms, so the index can skip past scrubLineIndex — use >= to
+                    // handle the skip. Guard bounds (song transition during scrub
+                    // can invalidate the index).
+                    val scrubIdx = state.scrubLineIndex
+                    val shouldClearScrub = state.isScrubbing &&
+                        scrubIdx != null &&
+                        newCurrent >= scrubIdx
+                    _uiState.update {
+                        it.copy(
+                            currentLineIndex = newCurrent,
+                            isScrubbing = if (shouldClearScrub) false else it.isScrubbing,
+                            scrubLineIndex = if (shouldClearScrub) null else it.scrubLineIndex
+                        )
+                    }
                 }
             }
         }
+    }
+
+    fun enterScrubMode(lineIndex: Int) {
+        val lyrics = _uiState.value.lyrics
+        if (lyrics.isEmpty()) return
+        val safeIndex = lineIndex.coerceIn(lyrics.indices)
+        _uiState.update { it.copy(isScrubbing = true, scrubLineIndex = safeIndex) }
+    }
+
+    fun seekTo(positionMs: Long) {
+        musicRepository.seekTo(positionMs)
+        _uiState.update { it.copy(isScrubbing = false, scrubLineIndex = null) }
     }
 
     fun setShowSearchPanel(show: Boolean) {

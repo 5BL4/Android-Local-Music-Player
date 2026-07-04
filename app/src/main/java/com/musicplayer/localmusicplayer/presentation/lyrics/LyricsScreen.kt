@@ -5,17 +5,24 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.musicplayer.localmusicplayer.R
+import com.musicplayer.localmusicplayer.util.formatDuration
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,25 +125,74 @@ fun LyricsScreen(
                     }
                 }
                 else -> {
-                    val listState = rememberLazyListState()
-                    val currentIndex = uiState.currentLineIndex
-                    LaunchedEffect(currentIndex) {
-                        if (currentIndex > 0) listState.animateScrollToItem(currentIndex)
-                    }
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize().padding(padding),
-                        contentPadding = PaddingValues(vertical = 64.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        itemsIndexed(uiState.lyrics) { index, line ->
-                            Text(
-                                text = line.text,
-                                style = if (index == currentIndex) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
-                                color = if (index == currentIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 12.dp)
-                            )
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(padding)) {
+                        val listState = rememberLazyListState()
+                        val currentIndex = uiState.currentLineIndex
+                        val isScrubbing = uiState.isScrubbing
+                        val scrubLineIndex = uiState.scrubLineIndex
+
+                        // Observe user drag-scrolls (NestedScrollSource.Drag) to enter
+                        // scrub mode. This fires ONLY for touch drags — programmatic
+                        // animateScrollToItem does NOT trigger it, so no race with the
+                        // auto-scroll LaunchedEffect below.
+                        val nestedScrollConnection = remember {
+                            object : NestedScrollConnection {
+                                override fun onPreScroll(
+                                    available: Offset,
+                                    source: NestedScrollSource
+                                ): Offset {
+                                    if (source == NestedScrollSource.UserInput) {
+                                        viewModel.enterScrubMode(listState.firstVisibleItemIndex)
+                                    }
+                                    return Offset.Zero
+                                }
+                            }
+                        }
+
+                        // Suppress auto-scroll while the user is scrubbing so the
+                        // pill stays anchored to the line they targeted.
+                        LaunchedEffect(currentIndex, isScrubbing) {
+                            if (currentIndex > 0 && !isScrubbing) {
+                                listState.animateScrollToItem(currentIndex)
+                            }
+                        }
+
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .nestedScroll(nestedScrollConnection),
+                            // Half-viewport top/bottom padding centers the scrolled-to line
+                            // vertically instead of pinning it to the top.
+                            contentPadding = PaddingValues(vertical = maxHeight / 2),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            itemsIndexed(uiState.lyrics) { index, line ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp)
+                                ) {
+                                    Text(
+                                        text = line.text,
+                                        style = if (index == currentIndex) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+                                        color = if (index == currentIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 32.dp)
+                                    )
+                                    if (isScrubbing && scrubLineIndex == index) {
+                                        SeekPill(
+                                            timestampMs = line.timestampMs,
+                                            onClick = { viewModel.seekTo(line.timestampMs) },
+                                            modifier = Modifier
+                                                .align(Alignment.CenterEnd)
+                                                .padding(end = 8.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -187,6 +243,46 @@ fun LyricsScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Compact seek-pill that appears to the right of a lyric line the user is
+ * scrubbing. Tapping it seeks playback to that line's timestamp.
+ *
+ * Uses an opaque `surfaceVariant` background (R6) so long lyric text behind
+ * the pill never bleeds through. The full-pill shape is a 50% rounded rect
+ * (capsule).
+ */
+@Composable
+private fun SeekPill(
+    timestampMs: Long,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        tonalElevation = 4.dp,
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PlayArrow,
+                contentDescription = "跳转到 ${formatDuration(timestampMs)}",
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = formatDuration(timestampMs),
+                style = MaterialTheme.typography.labelMedium
+            )
         }
     }
 }

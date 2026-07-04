@@ -1,13 +1,17 @@
 package com.musicplayer.localmusicplayer.service
 
+import android.app.PendingIntent
 import android.content.Intent
 import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.musicplayer.localmusicplayer.MainActivity
+import com.musicplayer.localmusicplayer.R
 import com.musicplayer.localmusicplayer.audio.EqualizerAudioProcessor
 import com.musicplayer.localmusicplayer.audio.EqualizerRenderersFactory
 import com.musicplayer.localmusicplayer.domain.model.PlaybackState
@@ -37,13 +41,11 @@ import javax.inject.Inject
 class MusicPlaybackService : MediaSessionService() {
 
     @Inject lateinit var audioFocusManager: AudioFocusManager
-    @Inject lateinit var mediaNotificationManager: MediaNotificationManager
     @Inject lateinit var playbackManager: PlaybackManager
     @Inject lateinit var equalizerAudioProcessor: EqualizerAudioProcessor
 
     private var mediaSession: MediaSession? = null
     private var exoPlayer: ExoPlayer? = null
-    private var wasInForeground = false
 
     // Queue & mode state
     private var currentQueue: List<Song> = emptyList()
@@ -65,6 +67,13 @@ class MusicPlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         try {
+            // Configure the default notification provider with our channel id (R4)
+            val provider = DefaultMediaNotificationProvider.Builder(this)
+                .setChannelId("music_playback")
+                .setChannelName(R.string.notification_channel_name)
+                .build()
+            setMediaNotificationProvider(provider)
+
             val player = ExoPlayer.Builder(
                 this,
                 EqualizerRenderersFactory(this, equalizerAudioProcessor)
@@ -82,7 +91,14 @@ class MusicPlaybackService : MediaSessionService() {
             audioFocusManager.onFocusGainAfterTransient = { Log.d("Svc", "Focus GAIN+"); player.volume = 1f; player.playWhenReady = true }
 
             // MediaSession bound to this Service's player
-            mediaSession = MediaSession.Builder(this, player).build()
+            val openIntent = PendingIntent.getActivity(
+                this, 0,
+                Intent(this, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_SINGLE_TOP },
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            mediaSession = MediaSession.Builder(this, player)
+                .setSessionActivity(openIntent)
+                .build()
 
             // Hand the session token to PlaybackManager so UI can bind via MediaController
             val session = mediaSession
@@ -113,8 +129,7 @@ class MusicPlaybackService : MediaSessionService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == "STOP_SERVICE") { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return START_NOT_STICKY }
-        launchNotificationObserver()
+        if (intent?.action == "STOP_SERVICE") { stopSelf(); return START_NOT_STICKY }
         return START_STICKY
     }
 
@@ -271,10 +286,11 @@ class MusicPlaybackService : MediaSessionService() {
                         }
                     }
                 }
+                Player.STATE_IDLE -> { audioFocusManager.abandonFocus(); stopPositionUpdates() }
                 else -> stopPositionUpdates()
             }
         }
-        override fun onIsPlayingChanged(isPlaying: Boolean) { emitState(); if (isPlaying) startPositionUpdates() else stopPositionUpdates() }
+        override fun onIsPlayingChanged(isPlaying: Boolean) { emitState(); if (isPlaying) { audioFocusManager.requestFocus(); startPositionUpdates() } else stopPositionUpdates() }
         override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
             val idx = exoPlayer?.currentMediaItemIndex ?: -1
             if (idx != currentIndex && idx in currentQueue.indices) { currentIndex = idx; emitState() }
@@ -309,33 +325,6 @@ class MusicPlaybackService : MediaSessionService() {
         }
     }
     private fun stopPositionUpdates() { positionUpdateJob?.cancel(); positionUpdateJob = null }
-
-    private fun launchNotificationObserver() {
-        serviceScope.launch {
-            try {
-                _playbackState.collect { state ->
-                    when (state) {
-                        is PlaybackState.Playing -> {
-                            if (!wasInForeground) audioFocusManager.requestFocus()
-                            startForeground(Constants.NOTIFICATION_ID, mediaNotificationManager.buildNotification(state.currentSong, true))
-                            wasInForeground = true
-                        }
-                        is PlaybackState.Paused -> {
-                            mediaNotificationManager.notify(mediaNotificationManager.buildNotification(state.currentSong, false))
-                            stopForeground(false); wasInForeground = false
-                        }
-                        is PlaybackState.Idle -> {
-                            stopForeground(STOP_FOREGROUND_REMOVE); mediaNotificationManager.cancel()
-                            audioFocusManager.abandonFocus(); wasInForeground = false; stopSelf()
-                        }
-                        else -> {}
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("Svc", "Notification observer failed", e)
-            }
-        }
-    }
 }
 
 // MediaItem converter shared with PlaybackManager
