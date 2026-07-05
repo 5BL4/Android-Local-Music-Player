@@ -1,5 +1,6 @@
 package com.musicplayer.localmusicplayer.presentation.lyrics
 
+import android.os.SystemClock
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -50,6 +51,10 @@ val SOURCES = listOf(
     "apple" to "Apple Music"
 )
 
+// Buffer time (ms) before auto-clearing a backward scrub so the user has time
+// to tap the seek pill before auto-scroll snaps back to the current line.
+private const val SCRUB_TIMEOUT_MS = 4000L
+
 @HiltViewModel
 class LyricsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -61,6 +66,10 @@ class LyricsViewModel @Inject constructor(
 
     private val songId: Long = savedStateHandle.get<Long>("songId") ?: 0L
     private var currentSong: Song? = null
+
+    // Last time the user dragged the lyrics list, used to give a
+    // buffer before auto-clearing backward scrubs (see position collector).
+    private var lastScrubTimeMs: Long = 0L
 
     private val _uiState = MutableStateFlow(LyricsUiState())
     val uiState: StateFlow<LyricsUiState> = _uiState.asStateFlow()
@@ -85,15 +94,24 @@ class LyricsViewModel @Inject constructor(
                 if (lyrics.isNotEmpty()) {
                     val idx = lyrics.indexOfLast { it.timestampMs <= position }
                     val newCurrent = idx.coerceAtLeast(0)
-                    // Auto-clear scrubbing once playback has caught up to (or passed)
-                    // the line the user was targeting. Position updates tick every
-                    // 250ms, so the index can skip past scrubLineIndex — use >= to
-                    // handle the skip. Guard bounds (song transition during scrub
-                    // can invalidate the index).
+                    // Auto-clear scrubbing so auto-scroll can resume. The logic is
+                    // direction-aware:
+                    //  - Forward scrub (target ahead of playback): never clear
+                    //    while still ahead; once playback catches up the target
+                    //    is no longer ahead and the timeout branch fires — by
+                    //    then the 4 s buffer has long expired, so it clears at
+                    //    once (preserving instant catch-up for forward scrubs).
+                    //  - Backward / at-current scrub (target at or behind
+                    //    playback): a position-based check is meaningless
+                    //    (playback is already past the target), so use a
+                    //    timeout from the last drag frame to give the user
+                    //    time to tap the seek pill.
                     val scrubIdx = state.scrubLineIndex
+                    val now = SystemClock.elapsedRealtime()
                     val shouldClearScrub = state.isScrubbing &&
                         scrubIdx != null &&
-                        newCurrent >= scrubIdx
+                        if (scrubIdx > newCurrent) false
+                        else now - lastScrubTimeMs > SCRUB_TIMEOUT_MS
                     _uiState.update {
                         it.copy(
                             currentLineIndex = newCurrent,
@@ -110,6 +128,7 @@ class LyricsViewModel @Inject constructor(
         val lyrics = _uiState.value.lyrics
         if (lyrics.isEmpty()) return
         val safeIndex = lineIndex.coerceIn(lyrics.indices)
+        lastScrubTimeMs = SystemClock.elapsedRealtime()
         _uiState.update { it.copy(isScrubbing = true, scrubLineIndex = safeIndex) }
     }
 
