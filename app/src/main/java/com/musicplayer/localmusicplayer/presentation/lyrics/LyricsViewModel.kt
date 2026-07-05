@@ -71,6 +71,14 @@ class LyricsViewModel @Inject constructor(
     // buffer before auto-clearing backward scrubs (see position collector).
     private var lastScrubTimeMs: Long = 0L
 
+    // Cache of the last position emitted by the collector. The lyrics-loading
+    // success path uses this to compute currentLineIndex immediately — the
+    // position collector's initial StateFlow emission arrives before lyrics
+    // are loaded and is skipped by the isNotEmpty() guard, so without this
+    // cache the highlight stays at 0 when playback is paused (no further
+    // emissions arrive to correct it).
+    private var lastKnownPosition: Long = 0L
+
     private val _uiState = MutableStateFlow(LyricsUiState())
     val uiState: StateFlow<LyricsUiState> = _uiState.asStateFlow()
 
@@ -81,7 +89,16 @@ class LyricsViewModel @Inject constructor(
             if (song != null) {
                 _uiState.update { it.copy(searchQuery = song.title) }
                 lyricsLocalDataSource.findAndParse(song)
-                    .onSuccess { lyrics -> _uiState.update { it.copy(lyrics = lyrics, isLoading = false) } }
+                    .onSuccess { lyrics ->
+                        val idx = lyrics.indexOfLast { it.timestampMs <= lastKnownPosition }
+                        _uiState.update {
+                            it.copy(
+                                lyrics = lyrics,
+                                isLoading = false,
+                                currentLineIndex = idx.coerceAtLeast(0)
+                            )
+                        }
+                    }
                     .onFailure { e -> _uiState.update { it.copy(error = e.message ?: "No lyrics found", isLoading = false) } }
             } else {
                 _uiState.update { it.copy(error = "Song not found", isLoading = false) }
@@ -89,6 +106,7 @@ class LyricsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             musicRepository.currentPosition.collect { position ->
+                lastKnownPosition = position
                 val state = _uiState.value
                 val lyrics = state.lyrics
                 if (lyrics.isNotEmpty()) {
@@ -207,11 +225,14 @@ class LyricsViewModel @Inject constructor(
             val ok = audioTagManager.embedLyrics(song, content)
             if (ok) {
                 val lines = LrcParser.parseSyncedPair(lrc, _uiState.value.previewTlyric)
+                val newLyrics = lines.map { LyricLine(it.timeMs, it.text) }
+                val idx = newLyrics.indexOfLast { it.timestampMs <= lastKnownPosition }
                 _uiState.update {
                     it.copy(
                         isEmbedding = false, embedSuccess = true,
                         embedMessage = "歌词已保存",
-                        lyrics = lines.map { LyricLine(it.timeMs, it.text) },
+                        lyrics = newLyrics,
+                        currentLineIndex = idx.coerceAtLeast(0),
                         showPreview = false, showSearchPanel = false, error = null
                     )
                 }
