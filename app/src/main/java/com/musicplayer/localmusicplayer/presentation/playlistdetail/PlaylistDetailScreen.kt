@@ -64,20 +64,13 @@ fun PlaylistDetailScreen(
                         TextButton(onClick = { viewModel.saveEdit() }) {
                             Text(stringResource(R.string.save))
                         }
+                    } else if (uiState.songs.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.playAll() }) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.play_all))
+                        }
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            if (uiState.songs.isNotEmpty()) {
-                FloatingActionButton(
-                    onClick = { viewModel.playAll() },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.play_all))
-                }
-            }
         }
     ) { padding ->
         if (uiState.isLoading) {
