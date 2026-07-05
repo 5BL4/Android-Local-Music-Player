@@ -201,7 +201,11 @@ class MusicPlaybackService : MediaSessionService() {
         }
     }
 
-    fun svcSeekTo(posMs: Long) { exoPlayer?.seekTo(posMs) }
+    fun svcSeekTo(posMs: Long) {
+        val p = exoPlayer ?: return
+        p.seekTo(posMs)
+        _currentPosition.value = posMs
+    }
     fun svcSetRepeatMode(mode: RepeatMode) { repeatMode = mode; emitState() }
     fun svcToggleShuffle() {
         val p = exoPlayer ?: return
