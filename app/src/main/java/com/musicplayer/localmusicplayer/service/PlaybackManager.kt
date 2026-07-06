@@ -36,6 +36,8 @@ class PlaybackManager @Inject constructor(
 
     companion object {
         private const val TAG = "PlaybackManager"
+        private const val MAX_BARS = 64
+        private const val EMIT_INTERVAL_MS = 33L  // ~30fps
     }
 
     private val _playbackState = MutableStateFlow<PlaybackState>(PlaybackState.Idle)
@@ -46,6 +48,12 @@ class PlaybackManager @Inject constructor(
 
     private val _audioSessionId = MutableStateFlow(0)
     val audioSessionId: Int get() = _audioSessionId.value
+
+    private val _amplitudes = MutableStateFlow<List<Float>>(emptyList())
+    val amplitudes: StateFlow<List<Float>> = _amplitudes.asStateFlow()
+
+    private val amplitudeBuffer = mutableListOf<Float>()
+    private var lastEmitMs = 0L
 
     private var mediaController: MediaController? = null
     private val managerScope = CoroutineScope(Main + SupervisorJob())
@@ -150,6 +158,24 @@ class PlaybackManager @Inject constructor(
 
     fun updateAudioSessionId(sessionId: Int) {
         _audioSessionId.value = sessionId
+    }
+
+    @Synchronized
+    fun onNewAmplitude(value: Double) {
+        amplitudeBuffer.add(value.toFloat().coerceIn(0f, 1f))
+        if (amplitudeBuffer.size > MAX_BARS) amplitudeBuffer.removeAt(0)
+        val now = System.currentTimeMillis()
+        if (now - lastEmitMs >= EMIT_INTERVAL_MS) {
+            _amplitudes.value = amplitudeBuffer.toList()
+            lastEmitMs = now
+        }
+    }
+
+    @Synchronized
+    fun clearAmplitudes() {
+        amplitudeBuffer.clear()
+        _amplitudes.value = emptyList()
+        lastEmitMs = 0L
     }
 
     fun release() {

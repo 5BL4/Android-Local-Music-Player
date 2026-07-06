@@ -181,6 +181,8 @@ class MusicRepositoryImpl @Inject constructor(
     override val audioSessionId: Int
         get() = playbackManager.audioSessionId
 
+    override val amplitudes: Flow<List<Float>> = playbackManager.amplitudes
+
     override suspend fun updateAlbumInfo(albumId: Long, newAlbum: String, newArtist: String): EditResult = withContext(Dispatchers.IO) {
         val entities = songDao.getSongsByAlbumOnce(albumId)
         if (entities.isEmpty()) {

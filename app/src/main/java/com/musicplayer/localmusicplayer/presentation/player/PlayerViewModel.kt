@@ -6,8 +6,10 @@ import com.musicplayer.localmusicplayer.domain.model.PlaybackState
 import com.musicplayer.localmusicplayer.domain.model.Playlist
 import com.musicplayer.localmusicplayer.domain.model.RepeatMode
 import com.musicplayer.localmusicplayer.domain.model.Song
+import com.musicplayer.localmusicplayer.domain.model.WaveformStyle
 import com.musicplayer.localmusicplayer.domain.repository.MusicRepository
 import com.musicplayer.localmusicplayer.domain.repository.PlaylistRepository
+import com.musicplayer.localmusicplayer.domain.repository.ThemeRepository
 import com.musicplayer.localmusicplayer.domain.usecase.ControlPlaybackUseCase
 import com.musicplayer.localmusicplayer.domain.usecase.PlaySongUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,13 +21,16 @@ data class PlayerUiState(
     val playbackState: PlaybackState = PlaybackState.Idle,
     val currentPositionMs: Long = 0L,
     val playlists: List<Playlist> = emptyList(),
-    val showAddToPlaylistDialog: Boolean = false
+    val showAddToPlaylistDialog: Boolean = false,
+    val amplitudes: List<Float> = emptyList(),
+    val waveformStyle: WaveformStyle = WaveformStyle.MirroredBars
 )
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
     private val playlistRepository: PlaylistRepository,
+    private val themeRepository: ThemeRepository,
     private val controlPlaybackUseCase: ControlPlaybackUseCase,
     private val playSongUseCase: PlaySongUseCase
 ) : ViewModel() {
@@ -49,6 +54,18 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             playlistRepository.playlists.collect { playlists ->
                 _uiState.update { it.copy(playlists = playlists) }
+            }
+        }
+
+        viewModelScope.launch {
+            musicRepository.amplitudes.collect { amplitudes ->
+                _uiState.update { it.copy(amplitudes = amplitudes) }
+            }
+        }
+
+        viewModelScope.launch {
+            themeRepository.waveformStyle.collect { style ->
+                _uiState.update { it.copy(waveformStyle = style) }
             }
         }
     }

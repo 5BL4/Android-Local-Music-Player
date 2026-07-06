@@ -7,6 +7,7 @@ import com.musicplayer.localmusicplayer.domain.model.Language
 import com.musicplayer.localmusicplayer.domain.model.SortOption
 import com.musicplayer.localmusicplayer.domain.model.ThemeColor
 import com.musicplayer.localmusicplayer.domain.model.ThemeMode
+import com.musicplayer.localmusicplayer.domain.model.WaveformStyle
 import com.musicplayer.localmusicplayer.domain.repository.ThemeRepository
 import com.musicplayer.localmusicplayer.domain.usecase.ScanMusicFilesUseCase
 import com.musicplayer.localmusicplayer.domain.usecase.SleepTimerUseCase
@@ -21,6 +22,7 @@ data class SettingsUiState(
     val useDynamicColor: Boolean = true,
     val defaultSortOption: SortOption = SortOption.Title,
     val language: Language = Language.English,
+    val waveformStyle: WaveformStyle = WaveformStyle.MirroredBars,
     val isSleepTimerActive: Boolean = false,
     val sleepTimerRemainingMinutes: Int = 0,
     val showSleepTimerDialog: Boolean = false,
@@ -60,6 +62,11 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            themeRepository.waveformStyle.collect { style ->
+                _uiState.update { it.copy(waveformStyle = style) }
+            }
+        }
+        viewModelScope.launch {
             themeRepository.themeColor.collect { color ->
                 _uiState.update { it.copy(themeColor = color) }
             }
@@ -84,6 +91,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setLanguage(language: Language) {
         viewModelScope.launch { themeRepository.setLanguage(language) }
+    }
+
+    fun setWaveformStyle(style: WaveformStyle) {
+        viewModelScope.launch { themeRepository.setWaveformStyle(style) }
     }
 
     fun rescanMusic() {

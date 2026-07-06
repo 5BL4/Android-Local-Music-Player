@@ -1,11 +1,8 @@
 package com.musicplayer.localmusicplayer.presentation.player
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Lyrics
@@ -25,6 +22,7 @@ import com.musicplayer.localmusicplayer.presentation.player.components.AddToPlay
 import com.musicplayer.localmusicplayer.presentation.player.components.AlbumArt
 import com.musicplayer.localmusicplayer.presentation.player.components.PlaybackControls
 import com.musicplayer.localmusicplayer.presentation.player.components.SeekBar
+import com.musicplayer.localmusicplayer.presentation.player.components.WaveformVisualization
 
 @Composable
 fun PlayerScreen(
@@ -178,8 +176,10 @@ fun PlayerScreen(
                             )
                         }
                         Spacer(modifier = Modifier.weight(0.3f))
-                        LyricsPreviewCard(
-                            onClick = { onLyricsClick(song.id) }
+                        WaveformVisualization(
+                            amplitudes = uiState.amplitudes,
+                            style = uiState.waveformStyle,
+                            modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -198,50 +198,6 @@ fun PlayerScreen(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = stringResource(R.string.back),
                 tint = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-}
-
-/**
- * Tappable card that fills the dead space below the player controls and
- * routes the user to the lyrics screen. Uses a muted surfaceVariant fill
- * to stay visually subordinate to the album art while still reading as
- * a distinct, interactive element.
- */
-@Composable
-private fun LyricsPreviewCard(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Lyrics,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = stringResource(R.string.view_lyrics),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

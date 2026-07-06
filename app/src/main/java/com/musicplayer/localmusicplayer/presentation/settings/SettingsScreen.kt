@@ -27,6 +27,7 @@ import com.musicplayer.localmusicplayer.domain.model.Language
 import com.musicplayer.localmusicplayer.domain.model.SortOption
 import com.musicplayer.localmusicplayer.domain.model.ThemeColor
 import com.musicplayer.localmusicplayer.domain.model.ThemeMode
+import com.musicplayer.localmusicplayer.domain.model.WaveformStyle
 import com.musicplayer.localmusicplayer.presentation.sleeptimer.SleepTimerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,6 +41,7 @@ fun SettingsScreen(
     var showSortPicker by remember { mutableStateOf(false) }
     var showLangPicker by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
+    var showWaveformStylePicker by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -123,6 +125,17 @@ fun SettingsScreen(
             supportingContent = { Text(uiState.language.displayName) },
             leadingContent = { Icon(Icons.Default.Language, contentDescription = null) },
             modifier = Modifier.clickable { showLangPicker = true }
+        )
+
+        Spacer(Modifier.height(24.dp))
+
+        // Waveform Style (AlertDialog style)
+        Text(stringResource(R.string.waveform_style), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.waveform_style)) },
+            supportingContent = { Text(uiState.waveformStyle.localized()) },
+            modifier = Modifier.clickable { showWaveformStylePicker = true }
         )
 
         Spacer(Modifier.height(24.dp))
@@ -239,6 +252,35 @@ fun SettingsScreen(
                 }
             },
             confirmButton = { TextButton(onClick = { showLangPicker = false }) { Text(stringResource(R.string.close)) } }
+        )
+    }
+
+    if (showWaveformStylePicker) {
+        AlertDialog(
+            onDismissRequest = { showWaveformStylePicker = false },
+            title = { Text(stringResource(R.string.waveform_style)) },
+            text = {
+                Column {
+                    WaveformStyle.entries.forEach { style ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setWaveformStyle(style)
+                                    showWaveformStylePicker = false
+                                },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = (style == uiState.waveformStyle),
+                                onClick = null
+                            )
+                            Text(style.localized())
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showWaveformStylePicker = false }) { Text(stringResource(R.string.close)) } }
         )
     }
 

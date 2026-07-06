@@ -41,6 +41,8 @@ interface MusicRepository {
 
     val audioSessionId: Int
 
+    val amplitudes: Flow<List<Float>>
+
     suspend fun deleteSongFile(song: Song): DeleteResult
     suspend fun deleteAlbumSongs(albumId: Long): DeleteResult
     suspend fun commitDelete(requestId: Long): Boolean

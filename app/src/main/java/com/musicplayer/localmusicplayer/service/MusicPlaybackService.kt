@@ -14,6 +14,7 @@ import com.musicplayer.localmusicplayer.MainActivity
 import com.musicplayer.localmusicplayer.R
 import com.musicplayer.localmusicplayer.audio.EqualizerAudioProcessor
 import com.musicplayer.localmusicplayer.audio.EqualizerRenderersFactory
+import androidx.media3.exoplayer.audio.WaveformAudioBufferSink
 import com.musicplayer.localmusicplayer.domain.model.PlaybackState
 import com.musicplayer.localmusicplayer.domain.model.RepeatMode
 import com.musicplayer.localmusicplayer.domain.model.Song
@@ -43,6 +44,7 @@ class MusicPlaybackService : MediaSessionService() {
     @Inject lateinit var audioFocusManager: AudioFocusManager
     @Inject lateinit var playbackManager: PlaybackManager
     @Inject lateinit var equalizerAudioProcessor: EqualizerAudioProcessor
+    @Inject lateinit var waveformSink: WaveformAudioBufferSink
 
     private var mediaSession: MediaSession? = null
     private var exoPlayer: ExoPlayer? = null
@@ -76,7 +78,7 @@ class MusicPlaybackService : MediaSessionService() {
 
             val player = ExoPlayer.Builder(
                 this,
-                EqualizerRenderersFactory(this, equalizerAudioProcessor)
+                EqualizerRenderersFactory(this, equalizerAudioProcessor, waveformSink)
             ).build().apply {
                 repeatMode = Player.REPEAT_MODE_OFF
                 addListener(playbackListener)
@@ -290,12 +292,13 @@ class MusicPlaybackService : MediaSessionService() {
                         }
                     }
                 }
-                Player.STATE_IDLE -> { audioFocusManager.abandonFocus(); stopPositionUpdates() }
+                Player.STATE_IDLE -> { audioFocusManager.abandonFocus(); stopPositionUpdates(); playbackManager.clearAmplitudes() }
                 else -> stopPositionUpdates()
             }
         }
         override fun onIsPlayingChanged(isPlaying: Boolean) { emitState(); if (isPlaying) { audioFocusManager.requestFocus(); startPositionUpdates() } else stopPositionUpdates() }
         override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
+            playbackManager.clearAmplitudes()
             val idx = exoPlayer?.currentMediaItemIndex ?: -1
             if (idx != currentIndex && idx in currentQueue.indices) { currentIndex = idx; emitState() }
         }

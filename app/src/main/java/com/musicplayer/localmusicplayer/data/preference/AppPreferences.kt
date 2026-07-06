@@ -12,6 +12,7 @@ import com.musicplayer.localmusicplayer.domain.model.Language
 import com.musicplayer.localmusicplayer.domain.model.SortOption
 import com.musicplayer.localmusicplayer.domain.model.ThemeColor
 import com.musicplayer.localmusicplayer.domain.model.ThemeMode
+import com.musicplayer.localmusicplayer.domain.model.WaveformStyle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -35,6 +36,7 @@ class AppPreferences @Inject constructor(
         private val KEY_DEFAULT_SORT = stringPreferencesKey("default_sort")
         private val KEY_LANGUAGE = stringPreferencesKey("language")
         private val KEY_THEME_COLOR = stringPreferencesKey("theme_color")
+        private val KEY_WAVEFORM_STYLE = stringPreferencesKey("waveform_style")
     }
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
@@ -63,6 +65,14 @@ class AppPreferences @Inject constructor(
             Language.valueOf(langStr)
         } catch (_: IllegalArgumentException) {
             Language.Chinese
+        }
+    }
+
+    val waveformStyle: Flow<WaveformStyle> = context.dataStore.data.map { prefs ->
+        try {
+            WaveformStyle.valueOf(prefs[KEY_WAVEFORM_STYLE] ?: WaveformStyle.MirroredBars.name)
+        } catch (_: IllegalArgumentException) {
+            WaveformStyle.MirroredBars
         }
     }
 
@@ -107,6 +117,12 @@ class AppPreferences @Inject constructor(
     suspend fun setLanguage(language: Language) {
         context.dataStore.edit { prefs ->
             prefs[KEY_LANGUAGE] = language.name
+        }
+    }
+
+    suspend fun setWaveformStyle(style: WaveformStyle) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_WAVEFORM_STYLE] = style.name
         }
     }
 

@@ -25,7 +25,6 @@
     <string name="repeat">循环播放</string>
     <string name="equalizer">均衡器</string>
     <string name="lyrics">歌词</string>
-    <string name="view_lyrics">查看歌词</string>
     <string name="album_art">专辑封面</string>
     <string name="no_lyrics_found">未找到歌词</string>
     <string name="no_music_found">未找到音乐文件，请点击同步按钮扫描。</string>
@@ -71,6 +70,7 @@
     <string name="settings">设置</string>
     <string name="about_text">一款精美的本地音乐播放器</string>
     <string name="language">语言</string>
+    <string name="waveform_style">波形样式</string>
     <string name="language_en">English</string>
     <string name="language_zh">中文</string>
     <string name="permission_title">需要访问音乐库权限</string>
