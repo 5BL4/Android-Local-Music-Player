@@ -3,6 +3,7 @@ package com.musicplayer.localmusicplayer.presentation.equalizer
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +36,14 @@ fun EqualizerScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.equalizer)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
+                    }
+                },
                 actions = {
                     Switch(
                         checked = uiState.isEnabled,

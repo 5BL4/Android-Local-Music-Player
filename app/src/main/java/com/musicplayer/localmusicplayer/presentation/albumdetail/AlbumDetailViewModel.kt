@@ -9,6 +9,7 @@ import com.musicplayer.localmusicplayer.data.deletion.MediaStoreDeleteManager
 import com.musicplayer.localmusicplayer.data.edit.MediaStoreEditManager
 import com.musicplayer.localmusicplayer.domain.model.DeleteResult
 import com.musicplayer.localmusicplayer.domain.model.EditResult
+import com.musicplayer.localmusicplayer.domain.model.PlaybackState
 import com.musicplayer.localmusicplayer.domain.model.Playlist
 import com.musicplayer.localmusicplayer.domain.model.Song
 import com.musicplayer.localmusicplayer.domain.repository.MusicRepository
@@ -16,6 +17,7 @@ import com.musicplayer.localmusicplayer.domain.repository.PlaylistRepository
 import com.musicplayer.localmusicplayer.domain.usecase.PlaySongUseCase
 import com.musicplayer.localmusicplayer.presentation.library.DeleteEvent
 import com.musicplayer.localmusicplayer.presentation.library.EditEvent
+import com.musicplayer.localmusicplayer.service.PlaybackManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.*
@@ -28,7 +30,8 @@ data class AlbumDetailUiState(
     val artistName: String = "",
     val songs: List<Song> = emptyList(),
     val playlists: List<Playlist> = emptyList(),
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val currentSongId: Long? = null
 )
 
 @HiltViewModel
@@ -38,7 +41,8 @@ class AlbumDetailViewModel @Inject constructor(
     private val playlistRepository: PlaylistRepository,
     private val playSongUseCase: PlaySongUseCase,
     private val deleteManager: MediaStoreDeleteManager,
-    private val editManager: MediaStoreEditManager
+    private val editManager: MediaStoreEditManager,
+    private val playbackManager: PlaybackManager
 ) : ViewModel() {
 
     private val albumId: Long = savedStateHandle.get<Long>("albumId") ?: -1L
@@ -80,6 +84,16 @@ class AlbumDetailViewModel @Inject constructor(
         }
         viewModelScope.launch {
             playlistRepository.playlists.collect { pls -> _uiState.update { it.copy(playlists = pls) } }
+        }
+        viewModelScope.launch {
+            playbackManager.playbackState.collect { state ->
+                val songId = when (state) {
+                    is PlaybackState.Playing -> state.currentSong.id
+                    is PlaybackState.Paused -> state.currentSong.id
+                    else -> null
+                }
+                _uiState.update { it.copy(currentSongId = songId) }
+            }
         }
     }
 

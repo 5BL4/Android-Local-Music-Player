@@ -1,5 +1,8 @@
 package com.musicplayer.localmusicplayer.presentation.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,7 +29,11 @@ import com.musicplayer.localmusicplayer.presentation.settings.SettingsScreen
 fun NavGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Songs.route
+        startDestination = Screen.Songs.route,
+        enterTransition = { fadeIn(animationSpec = tween(200)) },
+        exitTransition = { fadeOut(animationSpec = tween(200)) },
+        popEnterTransition = { fadeIn(animationSpec = tween(200)) },
+        popExitTransition = { fadeOut(animationSpec = tween(200)) }
     ) {
         composable(Screen.Songs.route) {
             SongsScreen(

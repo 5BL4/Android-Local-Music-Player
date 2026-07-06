@@ -2,6 +2,7 @@ package com.musicplayer.localmusicplayer.presentation.artistdetail
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,7 +27,15 @@ fun ArtistDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(uiState.artistName) }
+                title = { Text(uiState.artistName) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
+                    }
+                }
             )
         },
         floatingActionButton = {

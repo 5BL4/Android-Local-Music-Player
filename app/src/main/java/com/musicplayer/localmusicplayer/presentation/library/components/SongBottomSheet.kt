@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import com.musicplayer.localmusicplayer.R
 import com.musicplayer.localmusicplayer.domain.model.Playlist
 import com.musicplayer.localmusicplayer.domain.model.Song
+import com.musicplayer.localmusicplayer.presentation.player.components.AddToPlaylistDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -19,28 +20,21 @@ fun SongBottomSheet(
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onAddToPlaylist: (Long) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onCreatePlaylist: (String) -> Unit = {}
 ) {
     var showPlaylistPicker by remember { mutableStateOf(false) }
 
     if (showPlaylistPicker) {
-        AlertDialog(
-            onDismissRequest = { showPlaylistPicker = false },
-            title = { Text(stringResource(R.string.add_to_playlist)) },
-            text = {
-                Column {
-                    if (playlists.isEmpty()) {
-                        Text(stringResource(R.string.no_playlists_yet), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else {
-                        playlists.forEach { pl ->
-                            TextButton(onClick = { onAddToPlaylist(pl.id); showPlaylistPicker = false; onDismiss() }, modifier = Modifier.fillMaxWidth()) {
-                                Text(pl.name)
-                            }
-                        }
-                    }
-                }
+        AddToPlaylistDialog(
+            playlists = playlists,
+            onCreateNew = onCreatePlaylist,
+            onAddToExisting = { playlistId ->
+                onAddToPlaylist(playlistId)
+                showPlaylistPicker = false
+                onDismiss()
             },
-            confirmButton = { TextButton(onClick = { showPlaylistPicker = false }) { Text(stringResource(R.string.close)) } }
+            onDismiss = { showPlaylistPicker = false }
         )
     } else {
         ModalBottomSheet(onDismissRequest = onDismiss) {

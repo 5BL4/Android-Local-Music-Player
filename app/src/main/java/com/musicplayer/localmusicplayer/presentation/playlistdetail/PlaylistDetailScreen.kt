@@ -105,7 +105,7 @@ fun PlaylistDetailScreen(
                         // Drag handle
                         Icon(
                             imageVector = Icons.Default.DragHandle,
-                            contentDescription = "Reorder",
+                            contentDescription = stringResource(R.string.reorder),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
                                 .padding(start = 4.dp)
@@ -144,7 +144,8 @@ fun PlaylistDetailScreen(
                             onClick = { viewModel.playSong(song) },
                             onMenuClick = { songToDelete = song },
                             modifier = Modifier.weight(1f),
-                            horizontalPadding = 4.dp
+                            horizontalPadding = 4.dp,
+                            currentSongId = uiState.currentSongId
                         )
                     }
                     if (index < uiState.songs.size - 1) {

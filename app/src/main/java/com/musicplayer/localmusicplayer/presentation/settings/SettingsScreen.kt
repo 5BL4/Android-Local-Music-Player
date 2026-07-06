@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -28,6 +29,7 @@ import com.musicplayer.localmusicplayer.domain.model.ThemeColor
 import com.musicplayer.localmusicplayer.domain.model.ThemeMode
 import com.musicplayer.localmusicplayer.presentation.sleeptimer.SleepTimerDialog
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
@@ -39,12 +41,20 @@ fun SettingsScreen(
     var showLangPicker by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.settings)) }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
         Text(stringResource(R.string.theme), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(8.dp))
 
@@ -68,10 +78,18 @@ fun SettingsScreen(
                 val isSelected = color == uiState.themeColor
                 Box(
                     modifier = Modifier
-                        .size(36.dp).clip(CircleShape).background(color.seedColor)
-                        .then(if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
-                        .clickable { viewModel.setThemeColor(color) }
-                )
+                        .size(48.dp)
+                        .clickable { viewModel.setThemeColor(color) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(color.seedColor)
+                            .then(if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
+                    )
+                }
             }
         }
         Spacer(Modifier.height(4.dp))
@@ -80,10 +98,18 @@ fun SettingsScreen(
                 val isSelected = color == uiState.themeColor
                 Box(
                     modifier = Modifier
-                        .size(36.dp).clip(CircleShape).background(color.seedColor)
-                        .then(if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
-                        .clickable { viewModel.setThemeColor(color) }
-                )
+                        .size(48.dp)
+                        .clickable { viewModel.setThemeColor(color) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(color.seedColor)
+                            .then(if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
+                    )
+                }
             }
         }
 
@@ -160,6 +186,7 @@ fun SettingsScreen(
             headlineContent = { Text("LocalMusicPlayer v$versionName") },
             supportingContent = { Text(stringResource(R.string.about_text)) }
         )
+        }
     }
 
     // --- AlertDialog Pickers (matching sleep timer style) ---
@@ -191,12 +218,21 @@ fun SettingsScreen(
             text = {
                 Column {
                     Language.entries.forEach { lang ->
-                        TextButton(onClick = {
-                            viewModel.setLanguage(lang)
-                            com.musicplayer.localmusicplayer.MusicPlayerApplication.savedLanguage = lang
-                            showLangPicker = false
-                            (context as? android.app.Activity)?.recreate()
-                        }, modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setLanguage(lang)
+                                    com.musicplayer.localmusicplayer.MusicPlayerApplication.savedLanguage = lang
+                                    showLangPicker = false
+                                    (context as? android.app.Activity)?.recreate()
+                                },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = (lang == uiState.language),
+                                onClick = null
+                            )
                             Text(lang.displayName)
                         }
                     }

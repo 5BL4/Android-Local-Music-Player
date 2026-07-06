@@ -25,6 +25,7 @@
     <string name="repeat">循环播放</string>
     <string name="equalizer">均衡器</string>
     <string name="lyrics">歌词</string>
+    <string name="view_lyrics">查看歌词</string>
     <string name="album_art">专辑封面</string>
     <string name="no_lyrics_found">未找到歌词</string>
     <string name="no_music_found">未找到音乐文件，请点击同步按钮扫描。</string>
@@ -67,6 +68,7 @@
     <string name="scanning">扫描中…</string>
     <string name="playlists">播放列表</string>
     <string name="about">关于</string>
+    <string name="settings">设置</string>
     <string name="about_text">一款精美的本地音乐播放器</string>
     <string name="language">语言</string>
     <string name="language_en">English</string>
@@ -93,12 +95,16 @@
     <string name="song_album_label">专辑</string>
     <string name="song_year_label">年份</string>
     <string name="song_track_label">轨道号</string>
-    <string name="song_album_art">专辑封面</string>
     <string name="choose_album_art">从相册选择</string>
     <string name="edit_playlist_title">编辑播放列表</string>
     <string name="playlist_description">简介</string>
     <string name="choose_cover_image">选择封面图片</string>
     <string name="choose_playlist_icon">选择图标</string>
+    <string name="search_lyrics">搜索歌词</string>
+    <string name="source">音源</string>
+    <string name="search_online_hint">搜索在线歌词</string>
+    <string name="lyrics_preview">歌词预览</string>
+    <string name="embed_local">嵌入到本地</string>
     <string name="edit_info_menu">编辑信息</string>
     <string name="delete_menu">删除</string>
     <string name="song_disc_label">CD 号</string>
@@ -106,6 +112,20 @@
     <string name="edit_saved">已保存</string>
     <string name="edit_failed">保存失败</string>
     <string name="edit_cancelled">已取消</string>
+    <string name="delete_success">已删除</string>
     <string name="delete_failed">删除失败</string>
     <string name="delete_cancelled">已取消</string>
+    <string name="playlist_cover">播放列表封面</string>
+    <string name="artist_avatar">艺术家头像</string>
+    <string name="seek_bar">播放进度</string>
+    <string name="edit_album_info">编辑专辑信息</string>
+    <string name="album_name">专辑名</string>
+    <string name="delete_album_title">删除专辑</string>
+    <string name="delete_album_confirm">确定要删除专辑 \"%1$s\" 中的所有歌曲吗？此操作不可撤销。</string>
+    <string name="search_results_count">共 %1$d 条结果</string>
+    <string name="translated_lyrics">翻译歌词</string>
+    <string name="seek_to">跳转到 %1$s</string>
+    <string name="menu_more">更多选项</string>
+    <string name="load_failed">加载失败</string>
+    <string name="reorder">调整顺序</string>
 </resources>

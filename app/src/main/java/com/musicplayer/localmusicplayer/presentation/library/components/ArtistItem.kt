@@ -47,7 +47,7 @@ fun ArtistItem(
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.Person,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.artist_avatar),
                         modifier = Modifier.size(24.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

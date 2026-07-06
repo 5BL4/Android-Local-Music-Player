@@ -19,7 +19,8 @@ fun SongList(
     onSongClick: (Song) -> Unit,
     onSongMenuClick: ((Song) -> Unit)? = null,
     modifier: Modifier = Modifier,
-    horizontalPadding: Dp = 16.dp
+    horizontalPadding: Dp = 16.dp,
+    currentSongId: Long? = null
 ) {
     if (songs.isEmpty()) {
         Box(
@@ -39,7 +40,8 @@ fun SongList(
                     song = song,
                     onClick = { onSongClick(song) },
                     onMenuClick = onSongMenuClick?.let { { it(song) } },
-                    horizontalPadding = horizontalPadding
+                    horizontalPadding = horizontalPadding,
+                    currentSongId = currentSongId
                 )
             }
         }

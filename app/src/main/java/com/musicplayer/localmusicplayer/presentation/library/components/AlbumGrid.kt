@@ -33,7 +33,7 @@ fun AlbumGrid(
         }
     } else {
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+            columns = GridCells.Adaptive(minSize = 160.dp),
             modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),

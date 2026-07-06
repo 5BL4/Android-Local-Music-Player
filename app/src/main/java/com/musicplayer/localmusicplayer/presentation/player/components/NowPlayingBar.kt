@@ -18,6 +18,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.musicplayer.localmusicplayer.R
+import androidx.compose.ui.tooling.preview.Preview
+import android.content.res.Configuration
 
 @Composable
 fun NowPlayingBar(
@@ -52,14 +54,14 @@ fun NowPlayingBar(
                 if (albumArtUri != null) {
                     AsyncImage(
                         model = albumArtUri,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.album_art),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Default.MusicNote,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.album_art),
                         modifier = Modifier
                             .padding(8.dp)
                             .fillMaxSize(),
@@ -95,5 +97,53 @@ fun NowPlayingBar(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun NowPlayingBarPreview_Playing() {
+    MaterialTheme {
+        NowPlayingBar(
+            isPlaying = true,
+            title = "Bohemian Rhapsody",
+            artist = "Queen",
+            albumArtUri = null,
+            onPlayPauseClick = {},
+            onBarClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun NowPlayingBarPreview_Paused() {
+    MaterialTheme {
+        NowPlayingBar(
+            isPlaying = false,
+            title = "Stairway to Heaven",
+            artist = "Led Zeppelin",
+            albumArtUri = null,
+            onPlayPauseClick = {},
+            onBarClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun NowPlayingBarPreview_NoArtist() {
+    MaterialTheme {
+        NowPlayingBar(
+            isPlaying = true,
+            title = "Bohemian Rhapsody",
+            artist = "",
+            albumArtUri = null,
+            onPlayPauseClick = {},
+            onBarClick = {}
+        )
     }
 }

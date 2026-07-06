@@ -11,6 +11,7 @@ import com.musicplayer.localmusicplayer.domain.model.Album
 import com.musicplayer.localmusicplayer.domain.model.Artist
 import com.musicplayer.localmusicplayer.domain.model.DeleteResult
 import com.musicplayer.localmusicplayer.domain.model.EditResult
+import com.musicplayer.localmusicplayer.domain.model.PlaybackState
 import com.musicplayer.localmusicplayer.domain.model.Playlist
 import com.musicplayer.localmusicplayer.domain.model.Song
 import com.musicplayer.localmusicplayer.domain.model.SortOption
@@ -20,6 +21,7 @@ import com.musicplayer.localmusicplayer.domain.repository.ThemeRepository
 import com.musicplayer.localmusicplayer.domain.usecase.DeletePlaylistUseCase
 import com.musicplayer.localmusicplayer.domain.usecase.PlaySongUseCase
 import com.musicplayer.localmusicplayer.domain.usecase.ScanMusicFilesUseCase
+import com.musicplayer.localmusicplayer.service.PlaybackManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -35,7 +37,8 @@ data class LibraryUiState(
     val playlists: List<Playlist> = emptyList(),
     val sortOption: SortOption = SortOption.Title,
     val selectedTab: LibraryTab = LibraryTab.Songs,
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val currentSongId: Long? = null
 )
 
 enum class LibraryTab { Songs, Albums, Artists, Playlists }
@@ -61,7 +64,8 @@ class LibraryViewModel @Inject constructor(
     private val playSongUseCase: PlaySongUseCase,
     private val deletePlaylistUseCase: DeletePlaylistUseCase,
     private val deleteManager: MediaStoreDeleteManager,
-    private val editManager: MediaStoreEditManager
+    private val editManager: MediaStoreEditManager,
+    private val playbackManager: PlaybackManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LibraryUiState(isLoading = true))
@@ -110,6 +114,16 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch {
             themeRepository.defaultSortOption.collect { sortOption ->
                 _uiState.update { it.copy(sortOption = sortOption) }
+            }
+        }
+        viewModelScope.launch {
+            playbackManager.playbackState.collect { state ->
+                val songId = when (state) {
+                    is PlaybackState.Playing -> state.currentSong.id
+                    is PlaybackState.Paused -> state.currentSong.id
+                    else -> null
+                }
+                _uiState.update { it.copy(currentSongId = songId) }
             }
         }
     }

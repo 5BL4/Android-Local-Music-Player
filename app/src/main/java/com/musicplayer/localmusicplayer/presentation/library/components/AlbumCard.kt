@@ -11,10 +11,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.musicplayer.localmusicplayer.R
 import com.musicplayer.localmusicplayer.domain.model.Album
+import androidx.compose.ui.tooling.preview.Preview
+import android.content.res.Configuration
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -39,7 +43,7 @@ fun AlbumCard(
                     AsyncImage(model = album.albumArtUri, contentDescription = album.name, modifier = Modifier.fillMaxSize())
                 } else {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Album, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.Album, contentDescription = stringResource(R.string.album_art), modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -48,5 +52,42 @@ fun AlbumCard(
                 Text(album.artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun AlbumCardPreview() {
+    MaterialTheme {
+        AlbumCard(
+            album = Album(
+                albumId = 101,
+                name = "A Night at the Opera",
+                artist = "Queen",
+                albumArtUri = null,
+                songCount = 12
+            ),
+            onClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun AlbumCardPreview_LongClick() {
+    MaterialTheme {
+        AlbumCard(
+            album = Album(
+                albumId = 102,
+                name = "Dark Side of the Moon",
+                artist = "Pink Floyd",
+                albumArtUri = null,
+                songCount = 10
+            ),
+            onClick = {},
+            onLongClick = {}
+        )
     }
 }

@@ -57,7 +57,7 @@ fun EditSongDialog(
                     if (displayArtUri != null) {
                         AsyncImage(
                             model = displayArtUri,
-                            contentDescription = stringResource(R.string.song_album_art),
+                            contentDescription = stringResource(R.string.album_art),
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
@@ -130,7 +130,7 @@ fun EditSongDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
+            Button(onClick = {
                 val edited = song.copy(
                     title = title.ifBlank { song.title },
                     artist = artist.ifBlank { song.artist },

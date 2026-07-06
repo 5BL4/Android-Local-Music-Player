@@ -9,6 +9,7 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,6 +21,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.musicplayer.localmusicplayer.R
 import com.musicplayer.localmusicplayer.domain.model.Song
+import com.musicplayer.localmusicplayer.presentation.components.DeleteConfirmationDialog
 import com.musicplayer.localmusicplayer.presentation.library.components.EditSongDialog
 import com.musicplayer.localmusicplayer.presentation.library.components.SongBottomSheet
 import com.musicplayer.localmusicplayer.presentation.library.components.SongList
@@ -99,7 +101,7 @@ fun AlbumDetailScreen(
     LaunchedEffect(Unit) {
         viewModel.deleteEvent.collect { event ->
             val msg = when (event) {
-                DeleteEvent.Deleted -> context.getString(R.string.edit_saved)
+                DeleteEvent.Deleted -> context.getString(R.string.delete_success)
                 DeleteEvent.Failed -> context.getString(R.string.delete_failed)
                 DeleteEvent.Cancelled -> context.getString(R.string.delete_cancelled)
             }
@@ -111,6 +113,14 @@ fun AlbumDetailScreen(
         topBar = {
             TopAppBar(
                 title = { Text(uiState.albumName.ifEmpty { stringResource(R.string.unknown_album) }) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
+                    }
+                },
                 actions = {
                     if (uiState.songs.isNotEmpty()) {
                         IconButton(onClick = { viewModel.playAll() }) {
@@ -128,7 +138,8 @@ fun AlbumDetailScreen(
                 songs = uiState.songs,
                 onSongClick = { song -> viewModel.playSong(song) },
                 onSongMenuClick = { song -> bottomSheetSong = song },
-                modifier = Modifier.padding(padding)
+                modifier = Modifier.padding(padding),
+                currentSongId = uiState.currentSongId
             )
         }
     }
@@ -155,25 +166,22 @@ fun AlbumDetailScreen(
         }, onDismiss = { showEditDialog = false; editingSong = null }, onPickAlbumArt = { }, pickedAlbumArtUri = null)
     }
     if (showDeleteDialog && editingSong != null) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false; editingSong = null },
-            title = { Text(stringResource(R.string.delete_file)) },
-            text = { Text(stringResource(R.string.delete_file_confirm, editingSong!!.title)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    editingSong?.let { song ->
-                        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
-                            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                            pendingDeleteSong = song
-                            writePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        } else {
-                            viewModel.deleteSong(song)
-                        }
+        DeleteConfirmationDialog(
+            title = stringResource(R.string.delete_file),
+            message = stringResource(R.string.delete_file_confirm, editingSong!!.title),
+            onConfirm = {
+                editingSong?.let { song ->
+                    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                        pendingDeleteSong = song
+                        writePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    } else {
+                        viewModel.deleteSong(song)
                     }
-                    showDeleteDialog = false; editingSong = null
-                }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
+                }
+                showDeleteDialog = false; editingSong = null
             },
-            dismissButton = { TextButton(onClick = { showDeleteDialog = false; editingSong = null }) { Text(stringResource(R.string.cancel)) } }
+            onDismiss = { showDeleteDialog = false; editingSong = null }
         )
     }
 }

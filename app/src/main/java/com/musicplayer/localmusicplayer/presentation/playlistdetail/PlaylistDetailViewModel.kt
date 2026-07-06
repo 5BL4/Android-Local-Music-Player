@@ -3,12 +3,14 @@ package com.musicplayer.localmusicplayer.presentation.playlistdetail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.musicplayer.localmusicplayer.domain.model.PlaybackState
 import com.musicplayer.localmusicplayer.domain.model.Playlist
 import com.musicplayer.localmusicplayer.domain.model.Song
 import com.musicplayer.localmusicplayer.domain.repository.PlaylistRepository
 import com.musicplayer.localmusicplayer.domain.usecase.ManagePlaylistSongsUseCase
 import com.musicplayer.localmusicplayer.domain.usecase.PlaySongUseCase
 import com.musicplayer.localmusicplayer.domain.usecase.UpdatePlaylistUseCase
+import com.musicplayer.localmusicplayer.service.PlaybackManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -19,7 +21,8 @@ data class PlaylistDetailUiState(
     val songs: List<Song> = emptyList(),
     val isLoading: Boolean = true,
     val isEditing: Boolean = false,
-    val editName: String = ""
+    val editName: String = "",
+    val currentSongId: Long? = null
 )
 
 @HiltViewModel
@@ -28,7 +31,8 @@ class PlaylistDetailViewModel @Inject constructor(
     private val playlistRepository: PlaylistRepository,
     private val updatePlaylistUseCase: UpdatePlaylistUseCase,
     private val managePlaylistSongsUseCase: ManagePlaylistSongsUseCase,
-    private val playSongUseCase: PlaySongUseCase
+    private val playSongUseCase: PlaySongUseCase,
+    private val playbackManager: PlaybackManager
 ) : ViewModel() {
 
     private val playlistId: Long = savedStateHandle.get<Long>("playlistId") ?: 0L
@@ -45,6 +49,16 @@ class PlaylistDetailViewModel @Inject constructor(
         viewModelScope.launch {
             playlistRepository.getSongsInPlaylist(playlistId).collect { songs ->
                 _uiState.update { it.copy(songs = songs, isLoading = false) }
+            }
+        }
+        viewModelScope.launch {
+            playbackManager.playbackState.collect { state ->
+                val songId = when (state) {
+                    is PlaybackState.Playing -> state.currentSong.id
+                    is PlaybackState.Paused -> state.currentSong.id
+                    else -> null
+                }
+                _uiState.update { it.copy(currentSongId = songId) }
             }
         }
     }

@@ -36,7 +36,7 @@ fun SleepTimerDialog(
                     Text(stringResource(R.string.stop_playback_after))
                     Spacer(modifier = Modifier.height(8.dp))
                     options.forEach { minutes ->
-                        TextButton(
+                        OutlinedButton(
                             onClick = { onStart(minutes) },
                             modifier = Modifier.fillMaxWidth()
                         ) {

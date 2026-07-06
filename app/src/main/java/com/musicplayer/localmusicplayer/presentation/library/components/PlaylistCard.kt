@@ -44,7 +44,7 @@ fun PlaylistCard(
             } else {
                 Icon(
                     Icons.Default.PlaylistPlay,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.playlist_cover),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(40.dp)
                 )

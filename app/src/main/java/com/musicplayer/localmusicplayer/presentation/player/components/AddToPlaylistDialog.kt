@@ -37,7 +37,7 @@ fun AddToPlaylistDialog(
                     )
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                        TextButton(onClick = {
+                        Button(onClick = {
                             if (newName.isNotBlank()) {
                                 onCreateNew(newName.trim())
                                 onDismiss()

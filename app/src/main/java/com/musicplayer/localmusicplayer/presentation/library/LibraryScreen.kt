@@ -29,6 +29,7 @@ import com.musicplayer.localmusicplayer.domain.model.Song
 import com.musicplayer.localmusicplayer.presentation.library.components.AlbumBottomSheet
 import com.musicplayer.localmusicplayer.presentation.library.components.AlbumGrid
 import com.musicplayer.localmusicplayer.presentation.library.components.ArtistList
+import com.musicplayer.localmusicplayer.presentation.components.DeleteConfirmationDialog
 import com.musicplayer.localmusicplayer.presentation.library.components.EditPlaylistDialog
 import com.musicplayer.localmusicplayer.presentation.library.components.EditSongDialog
 import com.musicplayer.localmusicplayer.presentation.library.components.PagingSongList
@@ -116,7 +117,7 @@ fun SongsScreen(
     LaunchedEffect(Unit) {
         viewModel.deleteEvent.collect { event ->
             val msg = when (event) {
-                DeleteEvent.Deleted -> context.getString(R.string.edit_saved)
+                DeleteEvent.Deleted -> context.getString(R.string.delete_success)
                 DeleteEvent.Failed -> context.getString(R.string.delete_failed)
                 DeleteEvent.Cancelled -> context.getString(R.string.delete_cancelled)
             }
@@ -170,7 +171,8 @@ fun SongsScreen(
                         viewModel.playSong(song)
                         onPlayerOpen()
                     },
-                    onSongMenuClick = { song -> contextMenuSong = song }
+                    onSongMenuClick = { song -> contextMenuSong = song },
+                    currentSongId = uiState.currentSongId
                 )
             }
 
@@ -207,28 +209,23 @@ fun SongsScreen(
             }
 
             if (showDeleteDialog && editingSong != null) {
-                AlertDialog(
-                    onDismissRequest = { showDeleteDialog = false; editingSong = null },
-                    title = { Text(stringResource(R.string.delete_file)) },
-                    text = { Text(stringResource(R.string.delete_file_confirm, editingSong!!.title)) },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            editingSong?.let { song ->
-                                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
-                                    ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                                    pendingDeleteSong = song
-                                    writePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                                } else {
-                                    viewModel.deleteSongFile(song)
-                                }
+                DeleteConfirmationDialog(
+                    title = stringResource(R.string.delete_file),
+                    message = stringResource(R.string.delete_file_confirm, editingSong!!.title),
+                    onConfirm = {
+                        editingSong?.let { song ->
+                            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                                pendingDeleteSong = song
+                                writePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            } else {
+                                viewModel.deleteSongFile(song)
                             }
-                            showDeleteDialog = false
-                            editingSong = null
-                        }) { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) }
+                        }
+                        showDeleteDialog = false
+                        editingSong = null
                     },
-                    dismissButton = {
-                        TextButton(onClick = { showDeleteDialog = false; editingSong = null }) { Text(stringResource(R.string.cancel)) }
-                    }
+                    onDismiss = { showDeleteDialog = false; editingSong = null }
                 )
             }
         }
@@ -312,7 +309,7 @@ fun AlbumsScreen(
     LaunchedEffect(Unit) {
         viewModel.deleteEvent.collect { event ->
             val msg = when (event) {
-                DeleteEvent.Deleted -> context.getString(R.string.edit_saved)
+                DeleteEvent.Deleted -> context.getString(R.string.delete_success)
                 DeleteEvent.Failed -> context.getString(R.string.delete_failed)
                 DeleteEvent.Cancelled -> context.getString(R.string.delete_cancelled)
             }
@@ -326,11 +323,15 @@ fun AlbumsScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            AlbumGrid(
-                albums = uiState.albums,
-                onAlbumClick = onAlbumClick,
-                onAlbumLongClick = { album -> albumSheet = album }
-            )
+            if (uiState.isLoading) {
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
+            } else {
+                AlbumGrid(
+                    albums = uiState.albums,
+                    onAlbumClick = onAlbumClick,
+                    onAlbumLongClick = { album -> albumSheet = album }
+                )
+            }
 
             albumSheet?.let { alb ->
                 AlbumBottomSheet(
@@ -345,12 +346,12 @@ fun AlbumsScreen(
                 val eAlb = editingAlbum!!
                 AlertDialog(
                     onDismissRequest = { showAlbumEdit = false; editingAlbum = null },
-                    title = { Text("编辑专辑信息") },
+                    title = { Text(stringResource(R.string.edit_album_info)) },
                     text = {
                         Column {
-                            OutlinedTextField(value = editAlbumName, onValueChange = { editAlbumName = it }, label = { Text("专辑名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(value = editAlbumName, onValueChange = { editAlbumName = it }, label = { Text(stringResource(R.string.album_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
-                            OutlinedTextField(value = editAlbumArtist, onValueChange = { editAlbumArtist = it }, label = { Text("艺术家") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(value = editAlbumArtist, onValueChange = { editAlbumArtist = it }, label = { Text(stringResource(R.string.song_artist_label)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         }
                     },
                     confirmButton = { TextButton(onClick = {
@@ -365,31 +366,28 @@ fun AlbumsScreen(
                             viewModel.updateAlbumInfo(albumId, newAlbum, newArtist)
                         }
                         showAlbumEdit = false; editingAlbum = null
-                    }) { Text("保存") } },
+                    }) { Text(stringResource(R.string.save)) } },
                     dismissButton = { TextButton(onClick = { showAlbumEdit = false; editingAlbum = null }) { Text(stringResource(R.string.cancel)) } }
                 )
             }
 
             if (showAlbumDelete && editingAlbum != null) {
                 val dAlb = editingAlbum!!
-                AlertDialog(
-                    onDismissRequest = { showAlbumDelete = false; editingAlbum = null },
-                    title = { Text("删除专辑") },
-                    text = { Text("确定要删除专辑 \"${dAlb.name}\" 中的所有歌曲吗？此操作不可撤销。") },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            val albumId = dAlb.albumId
-                            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
-                                ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                                pendingAlbumDelete = albumId
-                                writePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                            } else {
-                                viewModel.deleteAlbumSongs(albumId)
-                            }
-                            showAlbumDelete = false; editingAlbum = null
-                        }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                DeleteConfirmationDialog(
+                    title = stringResource(R.string.delete_album_title),
+                    message = stringResource(R.string.delete_album_confirm, dAlb.name),
+                    onConfirm = {
+                        val albumId = dAlb.albumId
+                        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                            pendingAlbumDelete = albumId
+                            writePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        } else {
+                            viewModel.deleteAlbumSongs(albumId)
+                        }
+                        showAlbumDelete = false; editingAlbum = null
                     },
-                    dismissButton = { TextButton(onClick = { showAlbumDelete = false; editingAlbum = null }) { Text(stringResource(R.string.cancel)) } }
+                    onDismiss = { showAlbumDelete = false; editingAlbum = null }
                 )
             }
         }
@@ -411,11 +409,17 @@ fun ArtistsScreen(
             TopAppBar(title = { Text(stringResource(R.string.tab_artists)) })
         }
     ) { padding ->
-        ArtistList(
-            artists = uiState.artists,
-            onArtistClick = onArtistClick,
-            modifier = Modifier.fillMaxSize().padding(padding)
-        )
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (uiState.isLoading) {
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
+            } else {
+                ArtistList(
+                    artists = uiState.artists,
+                    onArtistClick = onArtistClick,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
     }
 }
 
@@ -463,13 +467,17 @@ fun PlaylistsScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            PlaylistGrid(
-                playlists = uiState.playlists,
-                onPlaylistClick = onPlaylistClick,
-                onPlaylistLongClick = { id, _ ->
-                    contextMenuPlaylist = uiState.playlists.find { it.id == id }
-                }
-            )
+            if (uiState.isLoading) {
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
+            } else {
+                PlaylistGrid(
+                    playlists = uiState.playlists,
+                    onPlaylistClick = onPlaylistClick,
+                    onPlaylistLongClick = { id, _ ->
+                        contextMenuPlaylist = uiState.playlists.find { it.id == id }
+                    }
+                )
+            }
 
             contextMenuPlaylist?.let { pl ->
                 AlertDialog(

@@ -1,5 +1,6 @@
 package com.musicplayer.localmusicplayer.presentation.library.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,9 +16,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.res.stringResource
 import coil3.compose.AsyncImage
+import com.musicplayer.localmusicplayer.R
 import com.musicplayer.localmusicplayer.domain.model.Song
 import com.musicplayer.localmusicplayer.util.formatDuration
+import androidx.compose.ui.tooling.preview.Preview
+import android.content.res.Configuration
 
 @Composable
 fun SongItem(
@@ -25,11 +30,18 @@ fun SongItem(
     onClick: () -> Unit,
     onMenuClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    horizontalPadding: Dp = 16.dp
+    horizontalPadding: Dp = 16.dp,
+    currentSongId: Long? = null
 ) {
+    val isCurrentSong = currentSongId != null && song.id == currentSongId
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .then(
+                if (isCurrentSong)
+                    Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
+                else Modifier
+            )
             .clickable(onClick = onClick)
             .padding(
                 start = horizontalPadding,
@@ -55,7 +67,7 @@ fun SongItem(
             } else {
                 Icon(
                     imageVector = Icons.Default.MusicNote,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.album_art),
                     modifier = Modifier.padding(10.dp).fillMaxSize(),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -69,8 +81,65 @@ fun SongItem(
         Text(formatDuration(song.durationMs), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (onMenuClick != null) {
             IconButton(onClick = onMenuClick) {
-                Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu_more), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SongItemPreview() {
+    MaterialTheme {
+        SongItem(
+            song = Song(
+                id = 1,
+                mediaStoreId = 1001,
+                title = "Bohemian Rhapsody",
+                artist = "Queen",
+                album = "A Night at the Opera",
+                albumId = 101,
+                durationMs = 354000L,
+                filePath = "/storage/music/bohemian_rhapsody.mp3",
+                contentUri = "content://media/external/audio/media/1001",
+                albumArtUri = null,
+                year = 1975,
+                trackNumber = 11,
+                discNumber = 1,
+                genre = "Rock"
+            ),
+            onClick = {},
+            onMenuClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun SongItemPreview_CurrentlyPlaying() {
+    MaterialTheme {
+        SongItem(
+            song = Song(
+                id = 2,
+                mediaStoreId = 1002,
+                title = "Stairway to Heaven",
+                artist = "Led Zeppelin",
+                album = "Led Zeppelin IV",
+                albumId = 102,
+                durationMs = 482000L,
+                filePath = "/storage/music/stairway_to_heaven.mp3",
+                contentUri = "content://media/external/audio/media/1002",
+                albumArtUri = null,
+                year = 1971,
+                trackNumber = 4,
+                discNumber = 1,
+                genre = "Rock"
+            ),
+            onClick = {},
+            onMenuClick = null,
+            currentSongId = 2
+        )
     }
 }

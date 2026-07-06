@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -37,9 +38,17 @@ fun LyricsScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.lyrics)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
+                    }
+                },
                 actions = {
                     IconButton(onClick = { viewModel.setShowSearchPanel(!uiState.showSearchPanel) }) {
-                        Icon(Icons.Default.Search, contentDescription = "Search Lyrics")
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search_lyrics))
                     }
                 }
             )
@@ -53,13 +62,13 @@ fun LyricsScreen(
                     OutlinedTextField(
                         value = uiState.searchQuery,
                         onValueChange = { viewModel.onSearchQueryChanged(it) },
-                        label = { Text("搜索歌词") },
+                        label = { Text(stringResource(R.string.search_lyrics)) },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(Modifier.width(8.dp))
                     Button(onClick = { viewModel.search() }, enabled = !uiState.isSearching) {
-                        Text("搜索")
+                        Text(stringResource(R.string.search))
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -69,7 +78,7 @@ fun LyricsScreen(
                         value = SOURCES.find { it.first == uiState.searchSource }?.second ?: uiState.searchSource,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("音源") },
+                        label = { Text(stringResource(R.string.source)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor()
                     )
@@ -94,7 +103,7 @@ fun LyricsScreen(
                         Text(uiState.searchError!!, color = MaterialTheme.colorScheme.error)
                     }
                     uiState.searchResults.isNotEmpty() -> {
-                        Text("共 ${uiState.searchResults.size} 条结果", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.search_results_count, uiState.searchResults.size), style = MaterialTheme.typography.bodySmall)
                         LazyColumn(modifier = Modifier.weight(1f)) {
                             itemsIndexed(uiState.searchResults) { _, item ->
                                 ListItem(
@@ -119,7 +128,7 @@ fun LyricsScreen(
                             Text(uiState.error!!, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.height(8.dp))
                             TextButton(onClick = { viewModel.setShowSearchPanel(true) }) {
-                                Text("搜索在线歌词")
+                                Text(stringResource(R.string.search_online_hint))
                             }
                         }
                     }
@@ -204,7 +213,7 @@ fun LyricsScreen(
     if (uiState.showPreview && uiState.previewLyric != null) {
         ModalBottomSheet(onDismissRequest = { viewModel.hidePreview() }) {
             Column(modifier = Modifier.padding(16.dp).padding(bottom = 32.dp)) {
-                Text("歌词预览", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.lyrics_preview), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
                 val preview = uiState.previewLyric!!
                 LazyColumn(modifier = Modifier.height(300.dp)) {
@@ -218,7 +227,7 @@ fun LyricsScreen(
                     if (uiState.previewTlyric != null) {
                         item {
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            Text("翻译歌词", style = MaterialTheme.typography.titleSmall)
+                            Text(stringResource(R.string.translated_lyrics), style = MaterialTheme.typography.titleSmall)
                             Text(
                                 text = uiState.previewTlyric!!.replace(Regex("\\[\\d{2}:\\d{2}\\.\\d{2,3}]"), ""),
                                 style = MaterialTheme.typography.bodyMedium
@@ -229,10 +238,10 @@ fun LyricsScreen(
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
                     Button(onClick = { viewModel.embedLyrics() }, enabled = !uiState.isEmbedding) {
-                        Text("嵌入到本地")
+                        Text(stringResource(R.string.embed_local))
                     }
                     OutlinedButton(onClick = { viewModel.hidePreview() }) {
-                        Text("取消")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
                 if (uiState.embedMessage != null) {
@@ -275,7 +284,7 @@ private fun SeekPill(
         ) {
             Icon(
                 imageVector = Icons.Filled.PlayArrow,
-                contentDescription = "跳转到 ${formatDuration(timestampMs)}",
+                contentDescription = stringResource(R.string.seek_to, formatDuration(timestampMs)),
                 modifier = Modifier.size(16.dp)
             )
             Spacer(Modifier.width(4.dp))
