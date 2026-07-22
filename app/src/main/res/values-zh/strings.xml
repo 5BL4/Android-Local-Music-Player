@@ -128,4 +128,12 @@
     <string name="menu_more">更多选项</string>
     <string name="load_failed">加载失败</string>
     <string name="reorder">调整顺序</string>
+
+    <!-- 首页 -->
+    <string name="tab_home">首页</string>
+    <string name="home_daily_recommend">每日推荐</string>
+    <string name="home_checked_in">今日已打卡！</string>
+    <string name="home_lunar_prefix">农历</string>
+    <string name="home_check_in_action">今日打卡</string>
+    <string name="home_check_in_hint">点击打卡</string>
 </resources>

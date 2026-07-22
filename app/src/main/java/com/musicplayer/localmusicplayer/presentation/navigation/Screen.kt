@@ -4,6 +4,7 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 
 sealed class Screen(val route: String) {
+    data object Home : Screen("home")
     data object Songs : Screen("songs")
     data object Albums : Screen("albums")
     data object Artists : Screen("artists")

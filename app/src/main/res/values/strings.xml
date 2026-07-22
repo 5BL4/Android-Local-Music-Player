@@ -129,4 +129,12 @@
     <string name="menu_more">More options</string>
     <string name="load_failed">Load failed</string>
     <string name="reorder">Reorder</string>
+
+    <!-- Home / 首页 -->
+    <string name="tab_home">Home</string>
+    <string name="home_daily_recommend">Daily Picks</string>
+    <string name="home_checked_in">Checked in today!</string>
+    <string name="home_lunar_prefix">Lunar</string>
+    <string name="home_check_in_action">Check in for today</string>
+    <string name="home_check_in_hint">Tap to check in</string>
 </resources>

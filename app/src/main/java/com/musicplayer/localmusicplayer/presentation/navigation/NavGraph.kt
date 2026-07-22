@@ -13,6 +13,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.musicplayer.localmusicplayer.presentation.home.HomeScreen
 import com.musicplayer.localmusicplayer.presentation.albumdetail.AlbumDetailScreen
 import com.musicplayer.localmusicplayer.presentation.artistdetail.ArtistDetailScreen
 import com.musicplayer.localmusicplayer.presentation.equalizer.EqualizerScreen
@@ -29,12 +30,19 @@ import com.musicplayer.localmusicplayer.presentation.settings.SettingsScreen
 fun NavGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Songs.route,
+        startDestination = Screen.Home.route,
         enterTransition = { fadeIn(animationSpec = tween(200)) },
         exitTransition = { fadeOut(animationSpec = tween(200)) },
         popEnterTransition = { fadeIn(animationSpec = tween(200)) },
         popExitTransition = { fadeOut(animationSpec = tween(200)) }
     ) {
+        composable(Screen.Home.route) {
+            HomeScreen(
+                onSettingsClick = { navController.navigate(Screen.Settings.route) },
+                onPlayerOpen = { navController.navigate(Screen.Player.route) }
+            )
+        }
+
         composable(Screen.Songs.route) {
             SongsScreen(
                 onPlayerOpen = { navController.navigate(Screen.Player.route) }
@@ -134,7 +142,7 @@ fun NavGraph(navController: NavHostController) {
         }
 
         composable(Screen.Settings.route) {
-            SettingsScreen()
+            SettingsScreen(onBack = { navController.popBackStack() })
         }
     }
 }

@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,6 +36,7 @@ class AppPreferences @Inject constructor(
         private val KEY_LANGUAGE = stringPreferencesKey("language")
         private val KEY_THEME_COLOR = stringPreferencesKey("theme_color")
         private val KEY_WAVEFORM_STYLE = stringPreferencesKey("waveform_style")
+        private val KEY_LAST_CHECK_IN_DATE = stringPreferencesKey("last_check_in_date")
     }
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
@@ -123,6 +123,16 @@ class AppPreferences @Inject constructor(
     suspend fun setWaveformStyle(style: WaveformStyle) {
         context.dataStore.edit { prefs ->
             prefs[KEY_WAVEFORM_STYLE] = style.name
+        }
+    }
+
+    val lastCheckInDate: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LAST_CHECK_IN_DATE]
+    }
+
+    suspend fun setLastCheckInDate(date: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LAST_CHECK_IN_DATE] = date
         }
     }
 

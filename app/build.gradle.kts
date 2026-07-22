@@ -15,8 +15,8 @@ android {
         applicationId = "com.musicplayer.localmusicplayer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "1.4.5"
+        versionCode = 14
+        versionName = "1.4.6"
 
         testInstrumentationRunner = "com.musicplayer.localmusicplayer.HiltTestRunner"
     }

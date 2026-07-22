@@ -15,9 +15,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -91,7 +91,7 @@ fun MainContent() {
 
     val playerViewModel: PlayerViewModel = viewModel()
 
-    val bottomNavScreens = setOf(Screen.Songs.route, Screen.Albums.route, Screen.Artists.route, Screen.Playlists.route, Screen.Settings.route)
+    val bottomNavScreens = setOf(Screen.Home.route, Screen.Songs.route, Screen.Albums.route, Screen.Artists.route, Screen.Playlists.route)
     val showBottomNav = currentRoute in bottomNavScreens
 
     val playerScreens = setOf(Screen.Player.route, Screen.Lyrics.ROUTE)
@@ -146,6 +146,20 @@ fun MainContent() {
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
                     NavigationBarItem(
+                        icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                        label = { Text(stringResource(R.string.tab_home)) },
+                        selected = currentRoute == Screen.Home.route,
+                        onClick = {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                    NavigationBarItem(
                         icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
                         label = { Text(stringResource(R.string.tab_songs)) },
                         selected = currentRoute == Screen.Songs.route,
@@ -193,20 +207,6 @@ fun MainContent() {
                         selected = currentRoute == Screen.Playlists.route,
                         onClick = {
                             navController.navigate(Screen.Playlists.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                        label = { Text(stringResource(R.string.tab_settings)) },
-                        selected = currentRoute == Screen.Settings.route,
-                        onClick = {
-                            navController.navigate(Screen.Settings.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
                                 }
